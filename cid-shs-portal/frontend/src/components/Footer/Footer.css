@@ -1,0 +1,35 @@
+/**
+ * Footer Styles
+ * Clean design matching sidebar
+ */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  height: 40px;
+  background: #1e40af;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.footer p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: white;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footer {
+    padding: 0 12px;
+  }
+  
+  .footer p {
+    font-size: 0.7rem;
+  }
+}

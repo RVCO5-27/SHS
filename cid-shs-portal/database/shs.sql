@@ -1,189 +1,570 @@
--- =============================================
--- 1. DATABASE ARCHITECTURE
--- =============================================
-CREATE DATABASE IF NOT EXISTS shs;
-USE shs;
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Apr 06, 2026 at 04:12 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
--- Clear existing tables to ensure a fresh start (Optional)
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS audit_logs, exam_results, projects, issuances, inventory, categories, admins;
-SET FOREIGN_KEY_CHECKS = 1;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
--- =============================================
--- 2. CORE INFRASTRUCTURE TABLES
--- =============================================
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
 
--- Administrative Personnel
-CREATE TABLE admins (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    full_name VARCHAR(100),
-    role ENUM('SuperAdmin', 'Editor', 'Viewer') DEFAULT 'Editor',
-    last_login DATETIME,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+--
+-- Database: `shs`
+--
+CREATE DATABASE IF NOT EXISTS `shs`;
+USE `shs`;
 
--- Document Classification
-CREATE TABLE categories (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    prefix VARCHAR(10),
-    description TEXT
-) ENGINE=InnoDB;
+-- --------------------------------------------------------
 
--- Students table for SHS Management Module
-CREATE TABLE IF NOT EXISTS students (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    student_id VARCHAR(50) NOT NULL UNIQUE,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    grade_level VARCHAR(50),
-    strand VARCHAR(100),
-    section VARCHAR(100),
-    school_year VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+--
+-- Table structure for table `admins`
+-- This table handles all authentication, roles, and profile data for header display
+--
 
--- Results table (exam or assessment results)
-CREATE TABLE IF NOT EXISTS results (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    student_id VARCHAR(50) NOT NULL,
-    subject VARCHAR(100) NOT NULL,
-    score DECIMAL(5,2) NOT NULL,
-    remarks VARCHAR(255),
-    exam_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `admins` (
+  `id` int(11) NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) DEFAULT NULL COMMENT 'DepEd email for recovery',
+  `password` varchar(255) NOT NULL,
+  `full_name` varchar(100) DEFAULT NULL,
+  `role` enum('SuperAdmin','Admin') NOT NULL DEFAULT 'Admin',
+  `status` enum('active','inactive','suspended') DEFAULT 'active',
+  `avatar_url` varchar(255) DEFAULT NULL,
+  `must_change_password` tinyint(1) NOT NULL DEFAULT 0,
+  `last_login` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Files table to store upload metadata
-CREATE TABLE IF NOT EXISTS files (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    filename VARCHAR(255) NOT NULL,
-    originalname VARCHAR(255) NOT NULL,
-    path VARCHAR(255) NOT NULL,
-    uploaded_by INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (uploaded_by) REFERENCES admins(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- --------------------------------------------------------
 
--- =============================================
--- 3. CONTENT & TRACKING TABLES
--- =============================================
+--
+-- Table structure for table `categories`
+--
 
--- Official Issuances (The heart of the portal)
-CREATE TABLE issuances (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    category_id INT,
-    doc_number VARCHAR(50) NOT NULL,
-    series_year INT NOT NULL,
-    title TEXT NOT NULL,
-    date_issued DATE,
-    signatory VARCHAR(150), -- Who signed the document
-    file_path VARCHAR(255) DEFAULT 'default.pdf',
-    tags VARCHAR(255), -- For better search (e.g., 'Curriculum, Science, Grade 11')
-    view_count INT DEFAULT 0,
-    download_count INT DEFAULT 0,
-    is_archived BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+CREATE TABLE `categories` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `prefix` varchar(10) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `color_code` varchar(20) DEFAULT '#000000',
+  `icon` varchar(50) DEFAULT 'folder',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- SHS Projects & Learning Materials
-CREATE TABLE projects (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    project_code VARCHAR(50) UNIQUE,
-    project_title VARCHAR(255) NOT NULL,
-    summary TEXT,
-    budget_allocation DECIMAL(15,2) DEFAULT 0.00,
-    status ENUM('Proposed', 'Planning', 'Ongoing', 'Quality Assured', 'Completed', 'Cancelled') DEFAULT 'Planning',
-    material_type VARCHAR(50), -- SLM, LAS, Video Lesson, Exam
-    start_date DATE,
-    end_date DATE,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
 
--- Exam Analytics & Assessment Results
-CREATE TABLE exam_results (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    project_id INT,
-    exam_title VARCHAR(255) NOT NULL,
-    school_year VARCHAR(20), -- e.g., '2025-2026'
-    total_examinees INT DEFAULT 0,
-    passing_rate DECIMAL(5,2), -- e.g., 85.50
-    mean_score DECIMAL(5,2),
-    highest_score INT,
-    lowest_score INT,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
 
--- Physical Resource Inventory
-CREATE TABLE inventory (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    item_code VARCHAR(50) UNIQUE,
-    item_name VARCHAR(255) NOT NULL,
-    category ENUM('Office Supplies', 'IT Equipment', 'Learning Kits', 'Furniture') DEFAULT 'Office Supplies',
-    unit VARCHAR(50), -- reams, pcs, units
-    quantity INT DEFAULT 0,
-    critical_level INT DEFAULT 5, -- Alert when stock is below this
-    location VARCHAR(100),
-    remarks TEXT
-) ENGINE=InnoDB;
+-- --------------------------------------------------------
 
--- =============================================
--- 4. SYSTEM INTELLIGENCE TABLES
--- =============================================
+--
+-- Table structure for table `files`
+--
 
--- Audit Logs (Security feature: Tracks who did what)
-CREATE TABLE audit_logs (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    admin_id INT,
-    action VARCHAR(255), -- e.g., 'Updated Project SHS-CORE'
-    ip_address VARCHAR(45),
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+CREATE TABLE `files` (
+  `id` int(11) NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `originalname` varchar(255) NOT NULL,
+  `path` varchar(255) NOT NULL,
+  `mimetype` varchar(100) DEFAULT NULL,
+  `size` int(11) DEFAULT NULL,
+  `uploaded_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- =============================================
--- 5. MASSIVE SEED DATA (2026 CONTEXT)
--- =============================================
+-- --------------------------------------------------------
 
--- Categories
-INSERT INTO categories (name, prefix, description) VALUES 
-('Division Memoranda', 'DM', 'Official communications from the Schools Division Office'),
-('Regional Memoranda', 'RM', 'Communications from the Regional Office'),
-('Advisory', 'ADV', 'Announcements for information of the field'),
-('Policy', 'POL', 'Permanent guidelines and institutional rules'),
-('Office Order', 'OO', 'Internal personnel directives');
+--
+-- Table structure for table `folders`
+--
 
--- Admins (Password: password123)
-INSERT INTO admins (username, password, full_name, role) VALUES 
-('admin_main', '$2a$10$6p9GzC9Fp/zQvLp/M1H8/.fW.V5A7r6QhO6vL/y7z5e5z5z5z5z5z', 'Dr. Maria Dela Cruz', 'SuperAdmin'),
-('editor_shs', '$2a$10$6p9GzC9Fp/zQvLp/M1H8/.fW.V5A7r6QhO6vL/y7z5e5z5z5z5z5z', 'Juan Luna', 'Editor');
+CREATE TABLE `folders` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `owner_id` int(11) DEFAULT NULL,
+  `is_immutable` tinyint(1) DEFAULT 0 COMMENT '1 for year folders to preserve permalinks',
+  `status` enum('active','archived','restricted') DEFAULT 'active',
+  `visibility` enum('public','private') DEFAULT 'private',
+  `categories` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`categories`)),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Issuances (Simulating 2026 Records)
-INSERT INTO issuances (category_id, doc_number, series_year, title, date_issued, signatory) VALUES 
-(1, '106', 2026, 'Quality Assurance for Senior High School Specialized Subject Modules', '2026-03-01', 'Division Superintendent'),
-(1, '107', 2026, 'Administration of National Achievement Test (NAT) for Grade 12', '2026-03-05', 'CID Chief'),
-(2, '045', 2026, 'Regional Festival of Talents - SHS Category Guidelines', '2026-02-15', 'Regional Director'),
-(3, '012', 2026, 'Postponement of SHS Work Immersion Orientation', '2026-03-10', 'SHS Coordinator'),
-(4, '002', 2026, 'Revised Policy on Classroom Observation for SHS Teachers', '2026-01-20', 'Secretary of Education');
 
--- Projects (Status and Summary)
-INSERT INTO projects (project_code, project_title, summary, status, material_type, start_date) VALUES 
-('SHS-CORE-2026', 'Project CORE: Contextualized Online Resource Essentials', 'Comprehensive development of digitized SLMs for core subjects in Grade 11.', 'Quality Assured', 'Digitized SLM', '2026-01-15'),
-('SHS-TVL-RETOOL', 'TVL Teacher Retooling Phase 2', 'Skills upgrade for TVL teachers focusing on modern robotics and automation.', 'Ongoing', 'Training Manual', '2026-02-01'),
-('EXAM-BANK-V3', 'Division Unified Test Item Bank', 'A centralized database of validated exam questions for all SHS strands.', 'Planning', 'Exam Bank', '2026-03-12');
 
--- Exam Results
-INSERT INTO exam_results (project_id, exam_title, school_year, total_examinees, passing_rate, mean_score) VALUES 
-(1, 'Midterm Assessment - Oral Comm', '2025-2026', 2450, 89.20, 84.50),
-(1, 'Midterm Assessment - General Math', '2025-2026', 2450, 76.45, 72.10),
-(2, 'Pre-Competency Test (Robotics)', '2025-2026', 120, 95.00, 91.00);
+-- --------------------------------------------------------
 
--- Inventory
-INSERT INTO inventory (item_code, item_name, category, unit, quantity, location) VALUES 
-('SUP-001', 'A4 Bond Paper (80gsm)', 'Office Supplies', 'Reams', 250, 'Cabinet A'),
-('IT-005', 'Wireless Presenter / Laser Pointer', 'IT Equipment', 'Pcs', 15, 'Tech Room'),
-('KIT-SHS-01', 'Senior High Science Lab Kits', 'Learning Kits', 'Units', 40, 'Science Lab Storage');
+--
+-- Table structure for table `issuances`
+--
+
+CREATE TABLE `issuances` (
+  `id` int(11) NOT NULL,
+  `category_id` int(11) DEFAULT NULL,
+  `folder_id` int(11) DEFAULT NULL,
+  `doc_number` varchar(50) NOT NULL,
+  `series_year` int(11) NOT NULL,
+  `title` text NOT NULL,
+  `description` text DEFAULT NULL,
+  `date_issued` date DEFAULT NULL,
+  `effective_date` date DEFAULT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `signatory` varchar(150) DEFAULT NULL,
+  `file_path` varchar(255) DEFAULT 'default.pdf',
+  `file_size` bigint(20) DEFAULT 0,
+  `file_type` varchar(50) DEFAULT 'application/pdf',
+  `thumbnail_path` varchar(255) DEFAULT NULL,
+  `tags` varchar(255) DEFAULT NULL,
+  `language` varchar(10) DEFAULT 'en',
+  `jurisdiction` varchar(100) DEFAULT 'Division',
+  `status` enum('draft','scheduled','published','archived') DEFAULT 'published',
+  `scheduled_at` datetime DEFAULT NULL,
+  `version_number` int(11) DEFAULT 1,
+  `view_count` int(11) DEFAULT 0,
+  `download_count` int(11) DEFAULT 0,
+  `is_archived` tinyint(1) DEFAULT 0,
+  `full_text_content` longtext DEFAULT NULL COMMENT 'For OCR content indexing',
+  `deleted_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `issuance_versions`
+--
+
+CREATE TABLE `issuance_versions` (
+  `id` int(11) NOT NULL,
+  `issuance_id` int(11) NOT NULL,
+  `version_number` int(11) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `file_size` bigint(20) DEFAULT 0,
+  `created_by` int(11) DEFAULT NULL,
+  `change_log` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `issuance_files`
+--
+
+CREATE TABLE `issuance_files` (
+  `id` int(11) NOT NULL,
+  `issuance_id` int(11) NOT NULL,
+  `file_id` int(11) NOT NULL,
+  `is_primary` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `login_attempts`
+--
+
+CREATE TABLE `login_attempts` (
+  `id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `attempt_count` int(11) NOT NULL DEFAULT 0,
+  `last_attempt_time` datetime DEFAULT NULL,
+  `lock_until` datetime DEFAULT NULL,
+  `is_blocked` tinyint(1) NOT NULL DEFAULT 0,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `login_recovery`
+--
+
+CREATE TABLE `login_recovery` (
+  `id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `token` char(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `saved_searches`
+--
+
+CREATE TABLE `saved_searches` (
+  `id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `query_params` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`query_params`)),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `audit_logs`
+--
+
+CREATE TABLE `audit_logs` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `action_type` enum('CREATE','UPDATE','DELETE','LOGIN','LOGOUT','UPLOAD') NOT NULL,
+  `module` varchar(100) NOT NULL DEFAULT '',
+  `record_id` varchar(50) DEFAULT NULL,
+  `old_value` longtext DEFAULT NULL,
+  `new_value` longtext DEFAULT NULL,
+  `resource_type` varchar(50) DEFAULT NULL,
+  `resource_id` int(11) DEFAULT NULL,
+  `diff_snapshot` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`diff_snapshot`)),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `carousel_slides`
+--
+
+CREATE TABLE `carousel_slides` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `image_path` varchar(255) NOT NULL,
+  `cta_text` varchar(50) DEFAULT NULL,
+  `cta_link` varchar(255) DEFAULT NULL,
+  `category` varchar(50) DEFAULT NULL,
+  `sort_order` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `organizational_chart`
+--
+
+CREATE TABLE `organizational_chart` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `image_path` varchar(255) NOT NULL,
+  `caption` text DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `schools`
+--
+
+CREATE TABLE `schools` (
+  `id` int(11) NOT NULL,
+  `school_id` varchar(50) NOT NULL,
+  `school_name` varchar(255) NOT NULL,
+  `principal_name` varchar(255) NOT NULL,
+  `designation` varchar(100) NOT NULL,
+  `year_started` int(11) NOT NULL,
+  `school_type` enum('Public','Private') NOT NULL DEFAULT 'Public',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `admins`
+--
+ALTER TABLE `admins`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD KEY `idx_admin_email` (`email`);
+
+--
+-- Indexes for table `categories`
+--
+ALTER TABLE `categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
+-- Indexes for table `files`
+--
+ALTER TABLE `files`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_file_name` (`filename`),
+  ADD KEY `fk_files_admin` (`uploaded_by`);
+
+--
+-- Indexes for table `folders`
+--
+ALTER TABLE `folders`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_folders_parent_status` (`parent_id`,`status`),
+  ADD KEY `idx_folders_owner` (`owner_id`);
+ALTER TABLE `folders` ADD FULLTEXT KEY `idx_folder_fulltext` (`name`,`description`);
+
+--
+-- Indexes for table `issuances`
+--
+ALTER TABLE `issuances`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `category_id` (`category_id`),
+  ADD KEY `idx_issuances_folder_status` (`folder_id`,`status`,`deleted_at`),
+  ADD KEY `idx_issuances_pagination` (`id`);
+ALTER TABLE `issuances` ADD FULLTEXT KEY `idx_fulltext_search` (`title`,`tags`,`full_text_content`);
+
+--
+-- Indexes for table `organizational_chart`
+--
+ALTER TABLE `organizational_chart`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `issuance_versions`
+--
+ALTER TABLE `issuance_versions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `issuance_id` (`issuance_id`),
+  ADD KEY `created_by` (`created_by`);
+
+--
+-- Indexes for table `issuance_files`
+--
+ALTER TABLE `issuance_files`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_issuance_files_lookup` (`issuance_id`,`is_primary`),
+  ADD KEY `fk_issuance_files_file` (`file_id`);
+
+--
+-- Indexes for table `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_login_attempts_admin` (`admin_id`);
+
+--
+-- Indexes for table `login_recovery`
+--
+ALTER TABLE `login_recovery`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_login_recovery_token` (`token`),
+  ADD KEY `idx_login_recovery_admin` (`admin_id`);
+
+--
+-- Indexes for table `saved_searches`
+--
+ALTER TABLE `saved_searches`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `admin_id` (`admin_id`);
+
+--
+-- Indexes for table `audit_logs`
+--
+ALTER TABLE `audit_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_audit_module` (`module`),
+  ADD KEY `idx_audit_timestamp` (`timestamp`),
+  ADD KEY `fk_audit_logs_admin` (`user_id`);
+
+--
+-- Indexes for table `carousel_slides`
+--
+ALTER TABLE `carousel_slides`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_carousel_sort` (`sort_order`);
+
+--
+-- Indexes for table `schools`
+--
+ALTER TABLE `schools`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `school_id` (`school_id`),
+  ADD KEY `idx_school_name` (`school_name`),
+  ADD KEY `fk_schools_admin` (`created_by`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `admins`
+--
+ALTER TABLE `admins`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `categories`
+--
+ALTER TABLE `categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `files`
+--
+ALTER TABLE `files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `folders`
+--
+ALTER TABLE `folders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `issuances`
+--
+ALTER TABLE `issuances`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `organizational_chart`
+--
+ALTER TABLE `organizational_chart`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `issuance_versions`
+--
+ALTER TABLE `issuance_versions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `issuance_files`
+--
+ALTER TABLE `issuance_files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `login_recovery`
+--
+ALTER TABLE `login_recovery`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `saved_searches`
+--
+ALTER TABLE `saved_searches`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `carousel_slides`
+--
+ALTER TABLE `carousel_slides`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `audit_logs`
+--
+ALTER TABLE `audit_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `schools`
+--
+ALTER TABLE `schools`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `files`
+--
+ALTER TABLE `files`
+  ADD CONSTRAINT `fk_files_admin` FOREIGN KEY (`uploaded_by`) REFERENCES `admins` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `folders`
+--
+ALTER TABLE `folders`
+  ADD CONSTRAINT `fk_folders_owner` FOREIGN KEY (`owner_id`) REFERENCES `admins` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `folders_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `folders` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `issuances`
+--
+ALTER TABLE `issuances`
+  ADD CONSTRAINT `fk_issuances_folder` FOREIGN KEY (`folder_id`) REFERENCES `folders` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `issuances_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `issuance_versions`
+--
+ALTER TABLE `issuance_versions`
+  ADD CONSTRAINT `issuance_versions_ibfk_1` FOREIGN KEY (`issuance_id`) REFERENCES `issuances` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `issuance_versions_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `admins` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `issuance_files`
+--
+ALTER TABLE `issuance_files`
+  ADD CONSTRAINT `fk_issuance_files_file` FOREIGN KEY (`file_id`) REFERENCES `files` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_issuance_files_issuance` FOREIGN KEY (`issuance_id`) REFERENCES `issuances` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  ADD CONSTRAINT `fk_login_attempts_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `login_recovery`
+--
+ALTER TABLE `login_recovery`
+  ADD CONSTRAINT `fk_login_recovery_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `saved_searches`
+--
+ALTER TABLE `saved_searches`
+  ADD CONSTRAINT `saved_searches_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `audit_logs`
+--
+ALTER TABLE `audit_logs`
+  ADD CONSTRAINT `fk_audit_logs_admin` FOREIGN KEY (`user_id`) REFERENCES `admins` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `schools`
+--
+ALTER TABLE `schools`
+  ADD CONSTRAINT `fk_schools_admin` FOREIGN KEY (`created_by`) REFERENCES `admins` (`id`) ON DELETE SET NULL;
+
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

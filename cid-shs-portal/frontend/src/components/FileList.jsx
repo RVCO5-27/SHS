@@ -4,7 +4,7 @@ function FileRow({ file }) {
   return (
     <tr className="align-middle file-row">
       <td>
-        <i className="bi bi-file-earmark-pdf-fill text-danger me-2" aria-hidden></i>
+        <i className="bi bi-file-earmark-pdf-fill text-danger me-2" aria-hidden="true"></i>
         {file.name}
       </td>
       <td>{file.size}</td>

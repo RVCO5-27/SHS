@@ -14,7 +14,7 @@ const pool = mysql.createPool({
 pool.getConnection()
     .then(conn => {
         conn.release();
-        console.log('Successfully connected to cid_shs_db (pool)');
+        console.log(`Successfully connected to ${process.env.DB_NAME || 'cid_shs_db'} (pool)`);
     })
     .catch(err => {
         console.error('MySQL pool connection error (continuing):', err.message);

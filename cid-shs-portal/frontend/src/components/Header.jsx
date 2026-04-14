@@ -36,8 +36,8 @@ export function Header({ user, onMenuToggle }) {
             className="header-logo me-3"
           />
           <div>
-            <div className="header-brand h5 mb-0">SHS Portal</div>
-            <div className="header-subtitle">SDO Cabuyao City</div>
+            <div className="header-brand h5 mb-0">Building Futures</div>
+            <div className="header-subtitle">Strengthened SHS 2026–2027</div>
           </div>
         </div>
       </div>

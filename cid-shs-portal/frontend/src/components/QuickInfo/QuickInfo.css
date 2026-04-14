@@ -1,0 +1,201 @@
+/**
+ * QuickInfo Component Styles
+ * 
+ * Defines styles for quick info cards, icons, badges, and links
+ */
+
+/* Main Container */
+.quick-info {
+  width: 100%;
+}
+
+/* Grid Layout */
+.quick-info__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-lg, 1.5rem);
+}
+
+/* Card */
+.quick-info__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--space-lg, 1.5rem);
+  background-color: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius-lg, 1rem);
+  box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+  transition: all 0.3s ease;
+  animation: fadeInUp 0.5s ease forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quick-info__card:hover {
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+  transform: translateY(-4px);
+  border-color: var(--primary-light, #dbeafe);
+}
+
+/* Icon */
+.quick-info__icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-light, #dbeafe);
+  color: var(--primary, #2563eb);
+  border-radius: var(--radius-md, 0.5rem);
+  font-size: var(--font-size-xl, 1.5rem);
+  margin-bottom: var(--space-md, 1rem);
+  transition: all 0.2s ease;
+}
+
+.quick-info__card:hover .quick-info__icon {
+  background-color: var(--primary, #2563eb);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Stats Badge */
+.quick-info__badge {
+  position: absolute;
+  top: var(--space-md, 1rem);
+  right: var(--space-md, 1rem);
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs, 0.25rem) var(--space-sm, 0.5rem);
+  background-color: var(--success, #10b981);
+  color: white;
+  font-size: var(--font-size-xs, 0.75rem);
+  font-weight: 600;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Title */
+.quick-info__title {
+  font-size: var(--font-size-lg, 1.125rem);
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  margin-bottom: var(--space-sm, 0.5rem);
+  line-height: 1.3;
+}
+
+/* Detail */
+.quick-info__detail {
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--text-secondary, #64748b);
+  line-height: 1.6;
+  margin-bottom: var(--space-md, 1rem);
+  flex-grow: 1;
+}
+
+/* Link */
+.quick-info__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs, 0.25rem);
+  color: var(--primary, #2563eb);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  margin-top: auto;
+}
+
+.quick-info__link:hover {
+  text-decoration: none;
+  gap: var(--space-sm, 0.5rem);
+}
+
+.quick-info__link-icon {
+  font-size: var(--font-size-base, 1rem);
+  transition: transform 0.2s ease;
+}
+
+.quick-info__link:hover .quick-info__link-icon {
+  transform: translateX(4px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .quick-info__grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-md, 1rem);
+  }
+
+  .quick-info__card {
+    padding: var(--space-md, 1rem);
+  }
+
+  .quick-info__icon {
+    width: 48px;
+    height: 48px;
+    font-size: var(--font-size-lg, 1.25rem);
+  }
+
+  .quick-info__title {
+    font-size: var(--font-size-base, 1rem);
+  }
+
+  .quick-info__detail {
+    font-size: var(--font-size-xs, 0.75rem);
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-info__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-info__card {
+    padding: var(--space-md, 1rem);
+  }
+
+  .quick-info__badge {
+    top: var(--space-sm, 0.5rem);
+    right: var(--space-sm, 0.5rem);
+    font-size: 0.625rem;
+    padding: 2px 6px;
+  }
+}
+
+/* Animation variants for stagger effect */
+.quick-info__card:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.quick-info__card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.quick-info__card:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.quick-info__card:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.quick-info__card:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+.quick-info__card:nth-child(6) {
+  animation-delay: 0.5s;
+}

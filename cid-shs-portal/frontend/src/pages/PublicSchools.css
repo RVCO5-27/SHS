@@ -1,0 +1,66 @@
+.public-schools-page {
+  min-height: 1000vh;
+}
+
+.school-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 12px;
+}
+
+.school-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.school-icon-wrapper {
+  background-color: var(--sdo-accent, #2563eb);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.school-info-item {
+  font-size: 0.9rem;
+}
+
+.school-info-item svg {
+  width: 1.25rem;
+}
+
+.opacity-10 {
+  opacity: 0.1;
+}
+
+.search-section .input-group {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.search-section .form-control {
+  box-shadow: none;
+}
+
+.school-type-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.school-type-badge.public {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.school-type-badge.private {
+  background: #ecfeff;
+  color: #0891b2;
+  border: 1px solid #cffafe;
+}

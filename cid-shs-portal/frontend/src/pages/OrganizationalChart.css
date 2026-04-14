@@ -1,0 +1,160 @@
+/**
+ * OrganizationalChart Page Styles
+ * 
+ * Specific styles for the organizational chart page
+ * with improved card layouts and responsive design.
+ */
+
+/* Page Container */
+.org-chart-page {
+  padding: var(--space-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Page Header */
+.org-chart-page .section-header {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--border);
+}
+
+.org-chart-page .section-eyebrow {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
+}
+
+.org-chart-page .section-title {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+}
+
+.org-chart-page .section-copy {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Chart Image Block */
+.org-chart-hero {
+  margin: 0 0 var(--space-xl);
+}
+
+.org-chart-figure {
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-md);
+}
+
+.org-chart-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+.org-chart-caption {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Units Section */
+.org-chart-details {
+  margin-bottom: var(--space-xl);
+}
+
+.section-header--compact {
+  margin-bottom: var(--space-lg) !important;
+  padding-bottom: 0 !important;
+  border-bottom: 0 !important;
+}
+
+.units-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.unit-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.unit-title {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.unit-summary {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Chart Note */
+.chart-note {
+  text-align: center;
+  padding: var(--space-lg);
+  background: var(--surface-alt);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-xl);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  border-left: 4px solid var(--primary);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .org-chart-page {
+    padding: var(--space-md);
+  }
+
+  .org-chart-page .section-header {
+    margin-bottom: var(--space-lg);
+    padding-bottom: var(--space-lg);
+  }
+
+  .units-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .org-chart-figure {
+    padding: var(--space-sm);
+  }
+}
+
+/* Print Styles */
+@media print {
+  .org-chart-page {
+    padding: 20px;
+  }
+
+  .unit-card {
+    border-color: #ddd;
+  }
+}

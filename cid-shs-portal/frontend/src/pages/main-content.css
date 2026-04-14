@@ -1,0 +1,603 @@
+/**
+ * Main Content Page Styles
+ * Used by: Issuances, OrganizationalChart, IssuanceFilters
+ * 
+ * Contains shared styles for page layouts, sections, cards, filters,
+ * tables, and other common content elements.
+ */
+
+/* ============================================
+   Page Layout & Sections
+   ============================================ */
+
+/* Main page container */
+.issuances-page,
+.org-chart-page {
+  padding: var(--space-lg);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.content-section {
+  padding: var(--space-lg) 0;
+}
+
+/* Section Header Styles */
+.section-header {
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+.section-eyebrow {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
+}
+
+.section-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+}
+
+.section-copy {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Hero Section */
+.issuances-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  color: white;
+  margin-bottom: var(--space-xl);
+}
+
+.issuances-hero__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.issuances-hero__eyebrow {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+  margin-bottom: var(--space-sm);
+}
+
+.issuances-hero__copy {
+  flex: 1;
+  max-width: 500px;
+  font-size: var(--font-size-base);
+  opacity: 0.95;
+  line-height: 1.6;
+}
+
+/* Issuance Header */
+.issuance-header {
+  margin-bottom: var(--space-md);
+}
+
+.hero-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+}
+
+.hero-copy {
+  font-size: var(--font-size-base);
+  opacity: 0.9;
+}
+
+/* ============================================
+   Cards & Panels
+   ============================================ */
+
+.card,
+.content-card,
+.issuances-content {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.issuances-content {
+  padding: var(--space-xl);
+}
+
+.issuances-content__header {
+  margin-bottom: var(--space-xl);
+}
+
+.issuances-content__eyebrow {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-xs);
+}
+
+.issuances-content__title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.issuances-content__copy {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Summary Cards */
+.issuances-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-md);
+}
+
+.issuances-summary-card {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.issuances-summary-card__label {
+  display: block;
+  font-size: var(--font-size-sm);
+  opacity: 0.85;
+  margin-bottom: var(--space-xs);
+}
+
+.issuances-summary-card__value {
+  display: block;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+}
+
+/* ============================================
+   Filters Panel
+   ============================================ */
+
+.issuance-filters-panel {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--space-xl);
+  border: 1px solid var(--border);
+}
+
+.issuance-filters-panel__intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.issuance-filters-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-lg);
+}
+
+.issuance-filters-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.issuance-filters-field__label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.issuance-search-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.issuance-search-control__icon {
+  position: absolute;
+  left: var(--space-md);
+  font-size: var(--font-size-base);
+  pointer-events: none;
+}
+
+.issuance-search-control__input {
+  width: 100%;
+  padding: var(--space-md);
+  padding-left: calc(var(--space-md) * 2 + 20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: var(--surface);
+}
+
+.issuance-search-control__input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.issuance-search-control__input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-select {
+  width: 100%;
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.issuance-filters-panel__note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--surface-alt);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.issuance-filters-panel__note-label {
+  font-weight: 600;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* ============================================
+   Tabs
+   ============================================ */
+
+.issuance-tabs {
+  margin-bottom: var(--space-lg);
+}
+
+.tab-nav {
+  display: flex;
+  gap: var(--space-sm);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+
+.tab-button {
+  padding: var(--space-md) var(--space-lg);
+  background: transparent;
+  border: none;
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.tab-button::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.tab-button:hover {
+  color: var(--primary);
+}
+
+.tab-button.active {
+  color: var(--primary);
+}
+
+.tab-button.active::after {
+  background: var(--primary);
+}
+
+.tab-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.tab-count {
+  background: var(--surface-alt);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.tab-button.active .tab-count {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ============================================
+   Results & Loading
+   ============================================ */
+
+.issuances-results-shell {
+  margin-top: var(--space-lg);
+}
+
+.issuances-results-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-lg);
+}
+
+.issuances-results-meta__count {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.issuances-results-meta__hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.issuances-loading-state {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-xl);
+}
+
+.spinner-border {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   Organizational Chart
+   ============================================ */
+
+.org-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: var(--space-xl) 0;
+}
+
+.org-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+}
+
+.level-header {
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+.level-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.level-name {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.level-cards {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.level-cards.level-1 { max-width: 300px; }
+.level-cards.level-2 { max-width: 500px; }
+.level-cards.level-3 { max-width: 700px; }
+.level-cards.level-4 { max-width: 900px; }
+
+.level-card {
+  background: var(--surface);
+  border: 2px solid var(--card-color, var(--primary));
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  min-width: 180px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.level-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.card-code {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.card-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.card-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.level-connector {
+  width: 2px;
+  height: var(--space-xl);
+  background: var(--border);
+  position: relative;
+}
+
+.level-connector::before,
+.level-connector::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 2px;
+  background: var(--border);
+  top: 50%;
+}
+
+.level-connector::before {
+  left: -10px;
+}
+
+.level-connector::after {
+  right: -10px;
+}
+
+.chart-note {
+  text-align: center;
+  padding: var(--space-lg);
+  background: var(--surface-alt);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-xl);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+
+@media (max-width: 768px) {
+  .issuances-page,
+  .org-chart-page {
+    padding: var(--space-md);
+  }
+
+  .issuances-hero {
+    padding: var(--space-lg);
+  }
+
+  .issuances-hero__content {
+    flex-direction: column;
+  }
+
+  .issuance-filters-panel__intro {
+    flex-direction: column;
+  }
+
+  .issuance-filters-panel__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .issuances-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .issuances-content {
+    padding: var(--space-lg);
+  }
+
+  .tab-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-button {
+    padding: var(--space-sm) var(--space-md);
+    white-space: nowrap;
+  }
+
+  .level-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .level-card {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .issuances-results-meta {
+    flex-direction: column;
+    gap: var(--space-sm);
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .hero-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .issuances-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .issuance-filters-panel {
+    padding: var(--space-md);
+  }
+}

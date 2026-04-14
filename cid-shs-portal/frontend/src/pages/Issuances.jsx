@@ -1,237 +1,440 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import '../pages/main-content.css';
-import IssuanceHeader from '../components/IssuanceHeader';
-import IssuanceFilters from '../components/IssuanceFilters';
-import IssuanceTabs from '../components/IssuanceTabs';
-import DocumentTable from '../components/DocumentTable';
-import PolicyCard from '../components/PolicyCard';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import './issuances-dashboard.css';
+import {
+  fetchFolders,
+  fetchFilesForFolder,
+  searchDocuments,
+  fetchCategories,
+  deleteDocument,
+} from '../services/issuancesDocumentService';
 
-const MOCK_ISSUANCES = [
-  {
-    id: 1,
-    title: 'Implementation of Senior High School School-Based Feeding Program for SY 2026-2027',
-    ref_no: 'DM-2026-015',
-    category: 'memorandum',
-    sub_category: 'Division Memorandum',
-    description: 'Guidelines on the implementation of the SHS School-Based Feeding Program',
-    file_url: '/files/dm-2026-015.pdf',
-    year: 2026,
-    date_issued: '2026-01-15',
-  },
-
-  {
-    id: 2,
-    title: 'Enrollment Guidelines for Senior High School SY 2026-2027',
-    ref_no: 'DM-2026-012',
-    category: 'memorandum',
-    sub_category: 'Division Memorandum',
-    description: 'Policies and procedures for SHS enrollment',
-    file_url: '/files/dm-2026-012.pdf',
-    year: 2026,
-    date_issued: '2026-01-10',
-  },
-  {
-    id: 3,
-    title: 'DepEd Order No. 12, s. 2026: K to 12 Curriculum',
-    ref_no: 'DO-2026-012',
-    category: 'policy',
-    sub_category: 'DepEd Order',
-    description: 'Policy guidelines on the implementation of the K to 12 Basic Education Program',
-    file_url: '/files/do-2026-012.pdf',
-    year: 2026,
-    date_issued: '2026-02-01',
-  },
-  {
-    id: 4,
-    title: 'Regional Memorandum No. 2026-034: Training Schedule',
-    ref_no: 'RM-2026-034',
-    category: 'memorandum',
-    sub_category: 'Regional Memorandum',
-    description: 'Training schedule for SHS teachers and administrators',
-    file_url: '/files/rm-2026-034.pdf',
-    year: 2026,
-    date_issued: '2026-02-15',
-  },
-  {
-    id: 5,
-    title: 'DepEd Order No. 08, s. 2025: Assessment Policy',
-    ref_no: 'DO-2025-008',
-    category: 'policy',
-    sub_category: 'DepEd Order',
-    description: 'Revised assessment and grading policy for K to 12',
-    file_url: '/files/do-2025-008.pdf',
-    year: 2025,
-    date_issued: '2025-03-20',
-  },
-  {
-    id: 6,
-    title: 'Advisory on NAT Administration for SHS',
-    ref_no: 'ADV-2026-005',
-    category: 'advisory',
-    sub_category: 'Advisory',
-    description: 'Advisory on the administration of National Achievement Test',
-    file_url: '/files/adv-2026-005.pdf',
-    year: 2026,
-    date_issued: '2026-03-01',
-  },
-];
-
-const AVAILABLE_YEARS = [2026, 2025, 2024];
-
-const tabDescriptions = {
-  memoranda: 'Division and regional memoranda supporting implementation, coordination, and school operations.',
-  policies: 'Official policy issuances and regulatory guidance relevant to SHS delivery and administration.',
-};
-
-export function IssuancesPage() {
-  const [activeTab, setActiveTab] = useState('memoranda');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedYear, setSelectedYear] = useState('all');
+/**
+ * Issuances — public portal for official documents and memoranda.
+ * Connected to the MySQL backend through issuancesDocumentService.
+ */
+export default function Issuances() {
+  const [searchParams] = useSearchParams();
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [folders, setFolders] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [activeFolder, setActiveFolder] = useState(null);
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [documents, setDocuments] = useState([]);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterValues, setFilterValues] = useState({
+    schoolYear: '',
+    category_id: '',
+  });
+
+  const searchFromUrl = searchParams.get('search') || '';
+  const typeParam = searchParams.get('type');
+
+  const [recentHighlights, setRecentHighlights] = useState([]);
 
   useEffect(() => {
-    setLoading(true);
-
-    const timeoutId = window.setTimeout(() => {
-      setDocuments(MOCK_ISSUANCES);
-      setLoading(false);
-    }, 300);
-
-    return () => window.clearTimeout(timeoutId);
+    const loadInitialData = async () => {
+      setLoading(true);
+      try {
+        const [folderData, categoryData, allDocs] = await Promise.all([
+          fetchFolders(),
+          fetchCategories(),
+          searchDocuments({ q: '' })
+        ]);
+        
+        setFolders(folderData);
+        setCategories(categoryData);
+        
+        // Use top 3 most recent documents for highlights
+        const highlights = allDocs.slice(0, 3).map(doc => ({
+          badge: doc.category_prefix || 'NEW',
+          title: doc.name
+        }));
+        setRecentHighlights(highlights);
+        
+        if (folderData && folderData.length > 0) {
+          setActiveFolder(folderData[0].id);
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
   }, []);
 
-  const filteredDocuments = useMemo(() => {
-    let filtered = documents;
+  useEffect(() => {
+    if (!activeFolder) return;
+    let mounted = true;
+    const loadFiles = async () => {
+      setLoading(true);
+      try {
+        const docs = await fetchFilesForFolder(activeFolder);
+        if (mounted) setFiles(docs);
+      } catch (error) {
+        console.error('Error loading files:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    loadFiles();
+    return () => {
+      mounted = false;
+    };
+  }, [activeFolder]);
 
-    if (activeTab === 'memoranda') {
-      filtered = filtered.filter((doc) => doc.category === 'memorandum');
-    } else if (activeTab === 'policies') {
-      filtered = filtered.filter((doc) => doc.category === 'policy');
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      setLoading(true);
+      try {
+        const results = await searchDocuments({ q: query, ...filterValues });
+        setFiles(results);
+      } catch (error) {
+        console.error('Error searching:', error);
+      } finally {
+        setLoading(false);
+      }
+    } else if (activeFolder) {
+      setLoading(true);
+      try {
+        const docs = await fetchFilesForFolder(activeFolder);
+        setFiles(docs);
+      } catch (error) {
+        console.error('Error loading files:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((doc) => doc.category === selectedCategory);
-    }
-
-    if (selectedYear !== 'all') {
-      filtered = filtered.filter((doc) => doc.year === Number.parseInt(selectedYear, 10));
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (doc) =>
-          doc.title.toLowerCase().includes(query) ||
-          doc.ref_no.toLowerCase().includes(query) ||
-          (doc.description && doc.description.toLowerCase().includes(query)),
-      );
-    }
-
-    return filtered;
-  }, [documents, activeTab, selectedCategory, selectedYear, searchQuery]);
-
-  const issuanceSummary = useMemo(() => {
-    const memorandumCount = documents.filter((doc) => doc.category === 'memorandum').length;
-    const policyCount = documents.filter((doc) => doc.category === 'policy').length;
-
-    return [
-      { label: 'Visible results', value: filteredDocuments.length },
-      { label: 'Memoranda', value: memorandumCount },
-      { label: 'Policies', value: policyCount },
-    ];
-  }, [documents, filteredDocuments]);
-
-  const handleDownload = (doc) => {
-    alert(`Downloading: ${doc.title}`);
   };
 
-  const handleView = (doc) => {
-    alert(`Viewing: ${doc.title}`);
+  /** Header / shared links: /issuances?search=… */
+  useEffect(() => {
+    if (!folders.length || !searchFromUrl) return;
+    let cancelled = false;
+    (async () => {
+      setSearchQuery(searchFromUrl);
+      setLoading(true);
+      try {
+        const results = await searchDocuments({
+          q: searchFromUrl,
+          ...filterValues,
+        });
+        if (!cancelled) setFiles(results);
+      } catch (error) {
+        console.error('Error searching:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [folders.length, searchFromUrl]);
+
+  const handleFilterChange = async (filterType, value) => {
+    const newFilters = { ...filterValues, [filterType]: value };
+    setFilterValues(newFilters);
+
+    setLoading(true);
+    try {
+      const results = await searchDocuments({
+        q: searchQuery,
+        ...newFilters,
+      });
+      setFiles(results);
+    } catch (error) {
+      console.error('Error filtering:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const isAdmin = () => localStorage.getItem('userType') === 'admin';
+  const displayFiles = useMemo(() => {
+    let list = files;
+    const typeParam = searchParams.get('type');
+
+    if (typeParam === 'advisories') {
+      list = list.filter((f) => /advisory/i.test(f.category || f.name));
+    } else if (typeParam === 'memoranda') {
+      list = list.filter((f) => /memo|memoranda|division/i.test(f.category || f.name));
+    } else if (typeParam === 'policies') {
+      list = list.filter((f) => /policy/i.test(f.category || f.name));
+    }
+
+    if (activeFilter === 'pdfs') {
+      list = list.filter((f) => f.type === 'pdf' || /\.pdf$/i.test(f.name));
+    } else if (activeFilter === 'policies') {
+      list = list.filter((f) => /policy/i.test(f.category || f.name));
+    } else if (activeFilter === 'memos') {
+      list = list.filter((f) => /memo|memoranda|division/i.test(f.category || f.name));
+    }
+
+    return list;
+  }, [files, activeFilter, searchParams]);
+
+  const contextHint = useMemo(() => {
+    if (searchFromUrl.trim()) {
+      return `Search active: “${searchFromUrl.trim()}”`;
+    }
+    if (typeParam === 'memoranda') return 'Filter: Memoranda';
+    if (typeParam === 'policies') return 'Filter: Policies';
+    if (typeParam === 'advisories') return 'Filter: Advisories';
+    return 'Browse by school year folder, then refine with search and filters.';
+  }, [searchFromUrl, typeParam]);
+
 
   return (
-    <div className="issuances-page">
-      <section className="issuances-hero card">
-        <div className="issuances-hero__content">
-          <div>
-            <p className="issuances-hero__eyebrow">Official repository</p>
-            <IssuanceHeader title="Issuances" />
-          </div>
-          <p className="issuances-hero__copy">
-            Explore formal SHS memoranda, policy issuances, and implementation references through a structured discovery interface designed for schools and stakeholders.
-          </p>
-        </div>
+    <div className="issuances-route">
+      <div className="dashboard-container">
+        <main className="main-content">
+          <header className="main-header">
+            <div className="header-left">
+              <h1 className="header-title">Issuances</h1>
+            </div>
+          </header>
 
-        <div className="issuances-summary-grid">
-          {issuanceSummary.map((item) => (
-            <article key={item.label} className="issuances-summary-card">
-              <span className="issuances-summary-card__label">{item.label}</span>
-              <strong className="issuances-summary-card__value">{item.value}</strong>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <IssuanceFilters
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        selectedYear={selectedYear}
-        onYearChange={setSelectedYear}
-        availableYears={AVAILABLE_YEARS}
-      />
-
-      <section className="issuances-content card">
-        <div className="issuances-content__header">
-          <div>
-            <p className="issuances-content__eyebrow">Content view</p>
-            <h2 className="issuances-content__title">Browse documents by resource type</h2>
-          </div>
-          <p className="issuances-content__copy">{tabDescriptions[activeTab]}</p>
-        </div>
-
-        <div className="mb-4">
-          <IssuanceTabs activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
-
-        <div className="issuances-results-shell">
-          {loading ? (
-            <div className="issuances-loading-state">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
+          <div className="dashboard-body">
+            <div className="welcome-banner welcome-banner--split">
+              <div className="welcome-banner__text">
+                <h2>Issuances &amp; official documents</h2>
+                <p>
+                  Division memoranda, policies, and advisories for SDO Cabuyao City SHS stakeholders.
+                  Select a school-year folder, search by keyword, and use the filters to narrow results.
+                </p>
+                <p className="welcome-banner__hint">{contextHint}</p>
+              </div>
+              <div className="welcome-banner__stats" aria-label="Current list summary">
+                <div className="stat-pill">
+                  <span className="stat-pill__value" style={{ fontSize: '2rem' }}>{displayFiles.length}</span>
+                  <span className="stat-pill__label">Showing</span>
+                </div>
+                <div className="stat-pill">
+                  <span className="stat-pill__value" style={{ fontSize: '2rem' }}>{files.length}</span>
+                  <span className="stat-pill__label">In source list</span>
+                </div>
+                <div className="stat-pill">
+                  <span className="stat-pill__value" style={{ fontSize: '2rem' }}>
+                    {folders.find((f) => f.id === activeFolder)?.label || '2023'}
+                  </span>
+                  <span className="stat-pill__label">Active folder</span>
+                </div>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="issuances-results-meta">
-                <span className="issuances-results-meta__count">{filteredDocuments.length} result(s) found</span>
-                <span className="issuances-results-meta__hint">Use the filters above to refine the resource list.</span>
+
+            <section className="issuances-intro" aria-labelledby="issuances-intro-title">
+              <h3 id="issuances-intro-title" className="issuances-intro__title">
+                How to use this page
+              </h3>
+              <ul className="issuances-intro__list">
+                <li>
+                  <strong>Folders</strong> — pick a school year to load documents for that period (mock data for demo).
+                </li>
+                <li>
+                  <strong>Search</strong> — matches file names; clear the box and refresh to reload the active folder.
+                </li>
+                <li>
+                  <strong>Filters</strong> — year, grade, strand, and document type work with search (demo behavior).
+                </li>
+                <li>
+                  <strong>Chips</strong> (All / PDFs / Policies / Memos) refine the table without leaving the page.
+                </li>
+              </ul>
+            </section>
+
+            <div className="explorer-section">
+              <h5 className="section-title">📁 Issuances & Documents</h5>
+
+              <div className="filter-buttons mb-4">
+                <button
+                  type="button"
+                  className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('all')}
+                  style={{ flex: '1', borderRadius: '8px 0 0 8px' }}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  className={`filter-btn ${activeFilter === 'pdfs' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('pdfs')}
+                  style={{ flex: '1', borderRadius: '0' }}
+                >
+                  PDFs
+                </button>
+                <button
+                  type="button"
+                  className={`filter-btn ${activeFilter === 'policies' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('policies')}
+                  style={{ flex: '1', borderRadius: '0' }}
+                >
+                  Policies
+                </button>
+                <button
+                  type="button"
+                  className={`filter-btn ${activeFilter === 'memos' ? 'active' : ''}`}
+                  onClick={() => setActiveFilter('memos')}
+                  style={{ flex: '1', borderRadius: '0 8px 8px 0' }}
+                >
+                  Memos
+                </button>
               </div>
 
-              {activeTab === 'memoranda' && (
-                <DocumentTable documents={filteredDocuments} onDownload={handleDownload} isAdmin={isAdmin()} />
-              )}
+              <div className="explorer-grid">
+                <div className="folder-list">
+                  <div className="folder-list-header p-3 fw-bold border-bottom">
+                    Browse Folders
+                  </div>
+                  <div className="folder-items">
+                    {folders.map((folder) => (
+                      <button
+                        key={folder.id}
+                        type="button"
+                        className={`folder-item ${folder.id === activeFolder ? 'active' : ''}`}
+                        onClick={() => setActiveFolder(folder.id)}
+                        style={{ paddingLeft: `${(folder.level || 0) * 1.25 + 1}rem` }}
+                      >
+                        {folder.level > 0 ? '↳ ' : ''}
+                        {folder.type === 'year' ? '📅' : '📁'} {folder.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-              {activeTab === 'policies' && (
-                <PolicyCard
-                  policies={filteredDocuments}
-                  onDownload={handleDownload}
-                  onView={handleView}
-                  isAdmin={isAdmin()}
-                />
-              )}
-            </>
-          )}
-        </div>
-      </section>
+                <div className="document-list">
+                  <div className="document-toolbar">
+                    <div className="toolbar-left">
+                      <span className="breadcrumb fw-bold">
+                        📂 {folders.find((f) => f.id === activeFolder)?.label || '2023'}
+                      </span>
+                    </div>
+                    <div className="toolbar-center">
+                      <div className="search-input-wrapper">
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder="Search documents..."
+                          value={searchQuery}
+                          onChange={(e) => handleSearch(e.target.value)}
+                        />
+                        <span className="search-icon">🔍</span>
+                      </div>
+                    </div>
+                    <div className="toolbar-actions">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setActiveFolder(folders[0]?.id);
+                        }}
+                      >
+                        🔄
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="filter-bar">
+                    <select className="filter-select"><option>All Years</option></select>
+                    <select className="filter-select"><option>All Grades</option></select>
+                    <select className="filter-select"><option>All Strands</option></select>
+                    <select className="filter-select"><option>All Types</option></select>
+                  </div>
+
+                  <div className="document-table-wrap">
+                    {loading ? (
+                      <div className="loading-spinner">
+                        <div className="spinner-border text-primary" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                      </div>
+                    ) : displayFiles.length > 0 ? (
+                      <table className="document-table">
+                        <thead>
+                          <tr>
+                            <th>Document Name</th>
+                            <th>Size</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayFiles.map((file) => (
+                            <tr key={file.id}>
+                              <td>
+                                <span className="doc-icon">📄</span>
+                                <span className="doc-name">{file.name}</span>
+                              </td>
+                              <td className="doc-size">
+                                {file.size || '1.2MB'}
+                              </td>
+                              <td>
+                                <div className="d-flex gap-1">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-light border d-flex align-items-center gap-1"
+                                    onClick={() => {
+                                      if (file.file_path && file.file_path !== 'default.pdf') {
+                                        window.open(`/uploads/${file.file_path}`, '_blank');
+                                      } else {
+                                        alert('File attachment not found.');
+                                      }
+                                    }}
+                                  >
+                                    <span style={{ fontSize: '10px' }}>👁️</span> View
+                                  </button>
+                                  <button className="btn btn-sm btn-primary" style={{ width: '32px', padding: '0' }}>⬇️</button>
+                                  <button className="btn btn-sm btn-danger" style={{ width: '32px', padding: '0' }}>🗑️</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="no-files">No files found</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bottom-dashboard">
+              <div className="news-section">
+                <div className="news-header">
+                  <h5>📰 Recent highlights</h5>
+                </div>
+                <div className="news-feed">
+                  {recentHighlights.map((item, i) => (
+                    <div key={i} className="news-item">
+                      <div className="news-badge">{item.badge}</div>
+                      <div className="news-content">
+                        <h6>{item.title}</h6>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="calendar-section">
+                <div className="calendar-header">
+                  <h5>📅 Reporting &amp; deadlines</h5>
+                </div>
+                <div className="calendar-body">
+                  <p className="calendar-body__text">
+                    Official cutoff dates are published through division memoranda. Check the table above
+                    for the latest issuances and download copies for your records.
+                  </p>
+                  <ul className="calendar-body__list">
+                    <li>Quarterly reports — follow current DM references in the document list.</li>
+                    <li>Enrollment-related advisories — watch for advisory filenames in search results.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
-
-export default IssuancesPage;
-

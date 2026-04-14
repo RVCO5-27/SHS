@@ -11,7 +11,12 @@ describe('Students API (protected)', () => {
     // create admin
     const hash = await bcrypt.hash(admin.password, 10);
     await db.execute('DELETE FROM admins WHERE username = ?', [admin.username]);
-    await db.execute('INSERT INTO admins (username, password, full_name, role) VALUES (?, ?, ?, ?)', [admin.username, hash, 'Students Test', 'Editor']);
+    await db.execute('INSERT INTO admins (username, password, full_name, role) VALUES (?, ?, ?, ?)', [
+      admin.username,
+      hash,
+      'Students Test',
+      'Editor',
+    ]);
 
     // login and get token
     const res = await request(app).post('/api/auth/login').send({ username: admin.username, password: admin.password });
@@ -20,10 +25,8 @@ describe('Students API (protected)', () => {
 
   afterAll(async () => {
     await db.execute('DELETE FROM admins WHERE username = ?', [admin.username]);
-    // cleanup any test students
     await db.execute("DELETE FROM students WHERE student_id LIKE 'TST-%'");
     if (typeof db.close === 'function') await db.close();
-    else if (typeof db.end === 'function') await db.end();
   });
 
   test('unauthorized access to /api/students returns 401', async () => {

@@ -9,17 +9,18 @@ describe('Auth API', () => {
   let server;
 
   beforeAll(async () => {
-    // ensure admin exists
     const hash = await bcrypt.hash(password, 10);
     await db.execute('DELETE FROM admins WHERE username = ?', [username]);
-    await db.execute('INSERT INTO admins (username, password, full_name, role) VALUES (?, ?, ?, ?)', [username, hash, 'Test Admin', 'Editor']);
+    await db.execute('INSERT INTO admins (username, password, full_name, role) VALUES (?, ?, ?, ?)', [
+      username,
+      hash,
+      'Test Admin',
+      'Editor',
+    ]);
   });
 
   afterAll(async () => {
     await db.execute('DELETE FROM admins WHERE username = ?', [username]);
-    // close DB pool
-    if (typeof db.close === 'function') await db.close();
-    else if (typeof db.end === 'function') await db.end();
   });
 
   test('login with valid credentials returns token', async () => {
@@ -28,6 +29,19 @@ describe('Auth API', () => {
       .send({ username, password })
       .expect(200);
     expect(res.body).toHaveProperty('token');
+    expect(res.body.user).toMatchObject({ username, role: 'Editor' });
+  });
+
+  test('GET /api/admin/dashboard requires admin token with role', async () => {
+    const login = await request(app)
+      .post('/api/auth/login')
+      .send({ username, password })
+      .expect(200);
+    const res = await request(app)
+      .get('/api/admin/dashboard')
+      .set('Authorization', `Bearer ${login.body.token}`)
+      .expect(200);
+    expect(res.body.user).toMatchObject({ username, role: 'Editor' });
   });
 
   test('login with invalid credentials returns 401', async () => {

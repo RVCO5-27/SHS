@@ -117,7 +117,7 @@
   --transition-slow: 300ms ease;
   
   /* ----- LAYOUT ----- */
-  --sidebar-width: 240px;
+--sidebar-width: 260px;
   --sidebar-width-tablet: 200px;
   --header-height: 64px;
 }
@@ -293,6 +293,7 @@ html, body {
   background: var(--color-gray-100);
   margin-left: var(--sidebar-width);
   min-height: 100vh;
+  box-sizing: border-box;
 }
 
 /* ----- Header ----- */

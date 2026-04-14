@@ -1,57 +1,67 @@
-import React from 'react';
 
-export default function IssuanceFilters({ 
-  searchQuery, 
-  onSearchChange, 
-  selectedCategory, 
-  onCategoryChange, 
-  selectedYear, 
-  onYearChange, 
-  availableYears 
-}) {
+import React from 'react';
+import './IssuanceFilters/IssuanceFilters.css';
+
+const IssuanceFilters = ({
+  searchQuery,
+  onSearchChange,
+  selectedCategory,
+  onCategoryChange,
+  selectedYear,
+  onYearChange,
+  availableYears,
+}) => {
   return (
-    <section className="issuance-filters-panel content-card">
+    <section 
+      className="issuance-filters-panel content-card" 
+      role="search" 
+      aria-label="Filter issuances"
+    >
       <div className="issuance-filters-panel__intro">
         <div>
-          <p className="section-eyebrow">Refine results</p>
-          <h3 className="section-title">Filter issuances by type and year</h3>
+          <p className="section-eyebrow">Refine search</p>
+          <h3 className="section-title">Filter issuances</h3>
         </div>
         <p className="section-copy">
-          Use filters to narrow down memoranda, policies, advisories, and other official documents.
+          Use filters to narrow down by category, year, and keywords. Results update instantly.
         </p>
       </div>
-
-      <div className="issuance-filters-panel__grid">
+      
+      <div className="issuance-filters-panel__grid" role="group" aria-label="Filter options">
         <div className="issuance-filters-field issuance-filters-field--search">
-          <label className="issuance-filters-field__label">Search documents</label>
+          <label 
+            className="issuance-filters-field__label" 
+            htmlFor="issuance-search"
+          >
+            Search
+          </label>
           <div className="issuance-search-control">
             <span className="issuance-search-control__icon" aria-hidden="true">🔍</span>
             <input
-              type="search"
+              id="issuance-search"
+              type="text"
               className="issuance-search-control__input"
-              placeholder="Search by title, reference, or description..."
+              placeholder="Search title, reference number, or description"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
+              aria-describedby="search-hint"
             />
-            {searchQuery && (
-              <button
-                type="button"
-                className="issuance-search-control__clear"
-                onClick={() => onSearchChange('')}
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
           </div>
         </div>
 
         <div className="issuance-filters-field">
-          <label className="issuance-filters-field__label">Category</label>
-          <select
+          <label 
+            className="issuance-filters-field__label" 
+            htmlFor="category-filter"
+          >
+            Category
+          </label>
+          <select 
+            id="category-filter"
             className="form-select issuance-filters-field__select"
             value={selectedCategory}
             onChange={(e) => onCategoryChange(e.target.value)}
+            aria-label="Filter by category"
           >
             <option value="all">All Categories</option>
             <option value="memorandum">Memorandum</option>
@@ -61,11 +71,18 @@ export default function IssuanceFilters({
         </div>
 
         <div className="issuance-filters-field">
-          <label className="issuance-filters-field__label">School Year</label>
-          <select
+          <label 
+            className="issuance-filters-field__label" 
+            htmlFor="year-filter"
+          >
+            Year
+          </label>
+          <select 
+            id="year-filter"
             className="form-select issuance-filters-field__select"
             value={selectedYear}
             onChange={(e) => onYearChange(e.target.value)}
+            aria-label="Filter by year"
           >
             <option value="all">All Years</option>
             {availableYears.map((year) => (
@@ -75,21 +92,36 @@ export default function IssuanceFilters({
         </div>
 
         <div className="issuance-filters-field">
-          <label className="issuance-filters-field__label">Document Type</label>
-          <select className="form-select issuance-filters-field__select">
-            <option>All Types</option>
-            <option>Division Memorandum</option>
-            <option>DepEd Order</option>
-            <option>Regional Memorandum</option>
+          <label 
+            className="issuance-filters-field__label" 
+            htmlFor="type-filter"
+          >
+            Type
+          </label>
+          <select 
+            id="type-filter"
+            className="form-select issuance-filters-field__select"
+            aria-label="Filter by type"
+          >
+            <option value="all">All Types</option>
+            <option value="division">Division</option>
+            <option value="regional">Regional</option>
+            <option value="national">National</option>
           </select>
         </div>
       </div>
 
-      <div className="issuance-filters-panel__note">
+      <div 
+        className="issuance-filters-panel__note" 
+        id="search-hint"
+        role="note"
+      >
         <span className="issuance-filters-panel__note-label">Tip</span>
-        <p>Filters apply instantly. Use search for specific keywords in titles or descriptions.</p>
+        <p>Results are updated in real-time as you type or select filters. Use the search for reference numbers like "DM-2026-015".</p>
       </div>
     </section>
   );
-}
+};
+
+export default IssuanceFilters;
 

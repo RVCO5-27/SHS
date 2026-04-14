@@ -12,9 +12,29 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(helmet());
-// Restrict CORS to the frontend dev server to avoid issues in dev
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5174' }));
+
+function getCorsAllowedOrigins() {
+  const raw = process.env.FRONTEND_ORIGIN;
+  if (raw) {
+    return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  // Vite defaults to 5173; some setups use 5174. 
+  // http://localhost is added for standard XAMPP/Apache frontend access.
+  return ['http://localhost:5173', 'http://localhost:5174', 'http://localhost', 'http://127.0.0.1'];
+}
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      const allowed = getCorsAllowedOrigins();
+      if (!origin) return callback(null, true);
+      if (allowed.includes(origin)) return callback(null, true);
+      callback(null, false);
+    },
+  })
+);
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
 // Serve uploaded files statically at /uploads (in production, secure this)

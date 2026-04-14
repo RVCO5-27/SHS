@@ -5,31 +5,35 @@
 const sliderImages = [
   {
     id: 1,
-    src: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200&h=400&fit=crop',
-    title: '🎓 Academic Excellence Achieved',
-    caption: 'Our SHS students continue to excel in regional and national assessments. Congratulations to all our achievers!',
-    category: 'Achievement'
+    src: '/MEMO.png',
+    title: 'MEMORANDUM',
+    caption: 'DepEd Memorandum 2026',
+    link: 'https://www.deped.gov.ph/wp-content/uploads/DM_s2026_012r.pdf',
+    category: 'Issuance'
   },
   {
     id: 2,
-    src: 'https://images.unsplash.com/photo-1562774053-701939374585?w=1200&h=400&fit=crop',
-    title: '🏫 New Learning Facilities Opened',
-    caption: 'State-of-the-art STEM laboratories and modern classrooms now available for SY 2025-2026.',
-    category: 'Campus'
+    src: '/MEMO.png',
+    title: 'MEMORANDUM',
+    caption: 'DepEd Memorandum 2026',
+    link: 'https://www.deped.gov.ph/wp-content/uploads/DM_s2026_012r.pdf',
+    category: 'Issuance'
   },
   {
     id: 3,
-    src: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&h=400&fit=crop',
-    title: '🤝 Community Outreach Program',
-    caption: 'Students participate in various community service activities within Cabuyao City.',
-    category: 'Community'
+    src: '/MEMO.png',
+    title: 'MEMORANDUM',
+    caption: 'DepEd Memorandum 2026',
+    link: 'https://www.deped.gov.ph/wp-content/uploads/DM_s2026_012r.pdf',
+    category: 'Issuance'
   },
   {
     id: 4,
-    src: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1200&h=400&fit=crop',
-    title: '📚 Senior High Enrollment Open',
-    caption: 'Enrollment for Grade 11 and 12 students is now ongoing. Secure your slot today!',
-    category: 'Enrollment'
+    src: '/MEMO.png',
+    title: 'MEMORANDUM',
+    caption: 'DepEd Memorandum 2026',
+    link: 'https://www.deped.gov.ph/wp-content/uploads/DM_s2026_012r.pdf',
+    category: 'Issuance'
   }
 ];
 

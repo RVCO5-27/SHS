@@ -1,0 +1,33 @@
+/**
+ * IssuanceHeader Component Styles
+ */
+
+.issuance-header {
+  margin-bottom: var(--space-md);
+}
+
+.hero-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: white;
+  margin-bottom: var(--space-sm);
+  line-height: 1.2;
+}
+
+.hero-copy {
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .hero-copy {
+    font-size: var(--font-size-sm);
+  }
+}
