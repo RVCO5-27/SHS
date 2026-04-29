@@ -1,0 +1,57 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+
+# Dependencies
+node_modules/
+npm-debug.log
+npm-error.log
+yarn-error.log
+
+# Production build
+dist/
+build/
+out/
+
+# Debug files
+recovery_debug.log
+*.debug.log
+debug_*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Uploads (user-generated content)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Database backups (local development)
+*.sql.bak
+*.sql.backup
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS specific
+.env.*.swp
+
+# Cache
+.eslintcache
+.jest-cache
+
+# vite
+.vite/
