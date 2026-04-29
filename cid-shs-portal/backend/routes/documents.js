@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { authMiddleware, requireAdminRole } = require('../middleware/auth');
+const { logCreate, logDelete, getClientIp, getUserAgent } = require('../services/auditService');
 const router = express.Router();
 
 // Upload directory
@@ -96,8 +98,13 @@ router.get('/:id', (req, res) => {
   res.json(doc);
 });
 
-// Upload document
-router.post('/upload', upload.single('file'), (req, res) => {
+// Upload document (staff only — prevents anonymous tampering)
+router.post(
+  '/upload',
+  authMiddleware,
+  requireAdminRole,
+  upload.single('file'),
+  async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -116,11 +123,30 @@ router.post('/upload', upload.single('file'), (req, res) => {
   };
   
   documents.push(newDoc);
+  
+  // Log document upload
+  try {
+    await logCreate(
+      req.user?.id || null,
+      'documents',
+      { name: newDoc.name, size: newDoc.size, schoolYear: newDoc.schoolYear, documentType: newDoc.documentType },
+      newDoc.id,
+      'document',
+      `Uploaded document: ${newDoc.name}`,
+      getClientIp(req),
+      getUserAgent(req)
+    );
+  } catch (auditErr) {
+    console.error('Audit logging error:', auditErr);
+    // Continue anyway - don't break the upload
+  }
+  
   res.json(newDoc);
-});
+  }
+);
 
 // Download document
-router.get('/:id/download', (req, res) => {
+router.get('/:id/download', async (req, res) => {
   const doc = documents.find(d => d.id === req.params.id);
   if (!doc) return res.status(404).json({ error: 'Document not found' });
   
@@ -129,11 +155,28 @@ router.get('/:id/download', (req, res) => {
     return res.status(404).json({ error: 'File not found' });
   }
   
+  // Log document download before sending
+  try {
+    await logCreate(
+      req.user?.id || null,
+      'documents',
+      { name: doc.name, size: doc.size, schoolYear: doc.schoolYear },
+      doc.id,
+      'download',
+      `Downloaded document: ${doc.name}`,
+      getClientIp(req),
+      getUserAgent(req)
+    );
+  } catch (auditErr) {
+    console.error('Audit logging error:', auditErr);
+    // Continue anyway - don't break the download
+  }
+  
   res.download(filePath, doc.name);
 });
 
-// Delete document
-router.delete('/:id', (req, res) => {
+// Delete document (staff only)
+router.delete('/:id', authMiddleware, requireAdminRole, async (req, res) => {
   const index = documents.findIndex(d => d.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: 'Document not found' });
   
@@ -148,6 +191,24 @@ router.delete('/:id', (req, res) => {
   }
   
   documents.splice(index, 1);
+  
+  // Log document deletion
+  try {
+    await logDelete(
+      req.user?.id || null,
+      'documents',
+      { name: doc.name, size: doc.size, schoolYear: doc.schoolYear, documentType: doc.documentType },
+      doc.id,
+      'document',
+      `Deleted document: ${doc.name}`,
+      getClientIp(req),
+      getUserAgent(req)
+    );
+  } catch (auditErr) {
+    console.error('Audit logging error:', auditErr);
+    // Continue anyway - deletion already done
+  }
+  
   res.json({ message: 'Document deleted successfully' });
 });
 
@@ -167,3 +228,4 @@ function formatFileSize(bytes) {
 }
 
 module.exports = router;
+

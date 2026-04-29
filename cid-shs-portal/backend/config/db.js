@@ -6,6 +6,9 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASS || '',
     database: process.env.DB_NAME || 'cid_shs_db',
+    // Required to run our .sql migration files as-is (they contain multiple statements).
+    // This is safe as long as we NEVER concatenate user input into SQL strings.
+    multipleStatements: true,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0

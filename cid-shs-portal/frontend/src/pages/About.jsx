@@ -1,8 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getStatsSummary } from '../services/stats';
 import './About.css';
 
 export default function About() {
+  const [stats, setStats] = useState([
+    { value: '...', label: 'Public Schools' },
+    { value: '...', label: 'Private Schools' },
+    { value: '...', label: 'Active Issuances' },
+    { value: '...', label: 'Document Categories' },
+  ]);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await getStatsSummary();
+        setStats([
+          { value: `${data.publicSchools}+`, label: 'Public Schools' },
+          { value: `${data.privateSchools}+`, label: 'Private Schools' },
+          { value: `${data.issuances}+`, label: 'Active Issuances' },
+          { value: `${data.categories}+`, label: 'Document Categories' },
+        ]);
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    };
+    loadStats();
+  }, []);
+
   const timeline = [
     { year: '2026', title: 'SHS Program Enhancement', description: 'Launch of the Strengthened SHS 2026-2027 program with new curriculum enhancements' },
     { year: '2025', title: 'Digital Portal Launch', description: 'SDO Cabuyao SHS Portal goes live providing centralized access to issuances' },
@@ -15,13 +40,6 @@ export default function About() {
     { name: 'Mr. Jose Miguel Reyes', role: 'Curriculum Specialist', initial: 'J' },
     { name: 'Mrs. Ana Patricia Lee', role: 'School Liaison Officer', initial: 'A' },
     { name: 'Mr. Rafael Thomas Aquino', role: 'Technical Support', initial: 'R' },
-  ];
-
-  const stats = [
-    { value: '50+', label: 'Partner Schools' },
-    { value: '10,000+', label: 'Enrolled Students' },
-    { value: '500+', label: 'Teachers' },
-    { value: '100+', label: 'Issuances' },
   ];
 
   return (

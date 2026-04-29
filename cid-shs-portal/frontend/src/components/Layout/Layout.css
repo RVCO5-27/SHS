@@ -14,9 +14,11 @@
   overflow-x: hidden;
   box-sizing: border-box;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Header - Fixed at top, aligned with sidebar edge */
+/* Header - Flex item, aligned with sidebar edge */
 .layout__header {
   position: relative;
   z-index: 10;
@@ -25,6 +27,8 @@
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
+  flex: 0 0 auto;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* Sidebar - Fixed, starts from top (connected to header) */
@@ -39,18 +43,29 @@
   background: transparent;
 }
 
-/* Main Content - Scrollable area */
-.layout__content {
-  margin-left: var(--sidebar-width);
-  min-height: calc(100vh - var(--header-height) - var(--footer-height));
-  padding: clamp(0.9rem, 2.4vw, 1.5rem);
-  padding-bottom: clamp(0.9rem, 2.4vw, 1.5rem);
-  overflow: visible;
-  background-color: #f8f9fa;
-  box-sizing: border-box;
+/* Main Container - Flexbox wrapper for sidebar + content */
+.layout__container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
-/* Footer - Fixed at bottom */
+/* Main Content - Scrollable area */
+.layout__content {
+  flex: 1;
+  min-height: 0;
+  padding: clamp(0.9rem, 2.4vw, 1.5rem);
+  padding-bottom: clamp(0.9rem, 2.4vw, 1.5rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--background, #f8fafc);
+  box-sizing: border-box;
+  margin-left: var(--sidebar-width);
+}
+
+/* Footer - Flex item at bottom */
 .layout__footer {
   position: relative;
   margin-left: var(--sidebar-width);
@@ -63,6 +78,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
+  flex-shrink: 0;
 }
 
 /* Responsive - below sidebar */
@@ -73,7 +90,7 @@
 
   .layout__content {
     margin-left: 0;
-    min-height: calc(100vh - var(--header-height) - var(--footer-height));
+    min-height: 0;
   }
   
   .layout__header {
@@ -117,4 +134,35 @@
     padding: clamp(0.75rem, 3vw, 1rem);
     padding-bottom: clamp(0.75rem, 3vw, 1rem);
   }
+}
+
+/* Admin Layout Variant */
+.layout--admin {
+  display: flex;
+  flex-direction: column;
+}
+
+.layout--admin .layout__header {
+  flex: 0 0 64px;
+  min-height: 64px;
+  position: relative;
+  z-index: 10;
+}
+
+.layout--admin .layout__container {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+}
+
+.layout--admin .layout__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.layout--admin .layout__footer {
+  flex: 0 0 40px;
+  min-height: 40px;
 }

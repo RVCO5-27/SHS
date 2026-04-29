@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import './AdminLogin.css';
 
 function UserIcon() {
@@ -28,6 +29,7 @@ function formatMmSs(totalSec) {
 }
 
 export default function AdminLogin() {
+  const { fetchProfile } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -78,17 +80,15 @@ export default function AdminLogin() {
     setSubmitting(true);
     try {
       const res = await api.post('/auth/login', { username, password });
-      if (res.data && res.data.token) {
-        localStorage.setItem('token', res.data.token);
-        if (remember) {
-          localStorage.setItem('adminRememberMe', '1');
-        } else {
-          localStorage.removeItem('adminRememberMe');
+      if (res.data) {
+        if (res.data.token) {
+          localStorage.setItem('token', res.data.token);
         }
         if (res.data.mustChangePassword) {
           navigate('/admin/change-password', { replace: true });
           return;
         }
+        await fetchProfile();
         const dest =
           locationState?.from && String(locationState.from).startsWith('/admin')
             ? locationState.from
@@ -216,8 +216,9 @@ export default function AdminLogin() {
         </p>
 
         <p className="admin-login-secure-note">
-          For security, there is no self-service password reset. After repeated failed sign-ins, an
-          account may be blocked — a one-time recovery link is sent only to the DepEd email on file.
+          For security, there is no open password reset form. After repeated failed sign-ins, your
+          account may be blocked and a one-time recovery link is sent to the recovery email saved in
+          your profile. If you do not receive it, check Spam first, then contact ICT.
         </p>
       </div>
 

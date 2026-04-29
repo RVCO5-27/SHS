@@ -3,7 +3,8 @@ import {
   getFolderTree, createFolder, updateFolder, deleteFolder, bulkMoveFolders,
   listIssuances, createIssuance, deleteIssuance, bulkUpdateIssuances 
 } from '../services/adminIssuancesMgmt';
-import CreateFolderForm from '../components/admin/CreateFolderForm';
+import CreateFolderForm from '../components/CreateFolderForm';
+import IssuanceForm from '../components/IssuanceForm';
 import './admin-issuances-premium.css';
 
 const AdminIssuancesMgmt = () => {
@@ -48,9 +49,8 @@ const AdminIssuancesMgmt = () => {
   }, [activeTab, filterPreset]);
 
   const filteredIssuances = useMemo(() => {
-    let base = [...issuances];
+    let base = issuances || [];
     if (activeTab === 'starred') {
-      // Mock starred logic - in real world this would be a server-side filter
       base = base.filter(i => i.is_starred); 
     }
     if (filterPreset === 'published') return base.filter(i => i.status === 'published');
@@ -73,7 +73,8 @@ const AdminIssuancesMgmt = () => {
         tab: activeTab
       };
       const issuanceList = await listIssuances(issuanceParams);
-      setIssuances(issuanceList.data);
+      const issuanceData = issuanceList?.data || issuanceList || [];
+      setIssuances(issuanceData);
     } catch (err) {
       setError('Encountered an issue loading data. Please try again.');
     } finally {
@@ -102,7 +103,8 @@ const AdminIssuancesMgmt = () => {
         listIssuances({ q: searchQuery, folder_id: selectedFolder?.id })
       ]);
       setFolders(fList);
-      setIssuances(iList.data);
+      const issuanceData = iList?.data || iList || [];
+      setIssuances(issuanceData);
     } catch (err) {
       setError('Search failed to execute.');
     } finally {
@@ -209,6 +211,20 @@ const AdminIssuancesMgmt = () => {
       loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create folder');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (formData) => {
+    setLoading(true);
+    try {
+      await createIssuance(formData);
+      setIsModalOpen(false);
+      showToast('Document uploaded successfully');
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create issuance');
     } finally {
       setLoading(false);
     }
@@ -410,7 +426,7 @@ const AdminIssuancesMgmt = () => {
                   <div className="admin-folder-card__icon">📁</div>
                   <div className="admin-folder-card__info">
                     <span className="admin-folder-card__name">{folder.name}</span>
-                    <span className="admin-folder-card__meta">{new Date(folder.created_at).toLocaleDateString()}</span>
+                    <span className="admin-folder-card__meta">{folder.created_at ? new Date(folder.created_at).toLocaleDateString() : ''}</span>
                   </div>
                   <div className="admin-folder-card__actions">
                     <button className="icon-btn" title="Options">•••</button>
@@ -427,57 +443,34 @@ const AdminIssuancesMgmt = () => {
               <table className="admin-data-table" aria-label="Issuances documents">
                 <thead>
                   <tr>
-                    <th className="checkbox-col">
-                      <input type="checkbox" onChange={(e) => setBulkSelection(e.target.checked ? filteredIssuances.map(i => i.id) : [])} />
-                    </th>
-                    <th>Document Name</th>
-                    <th>Ref ID</th>
-                    <th>Submitted By</th>
-                    <th>Status</th>
-                    <th>File Info</th>
-                    <th>Modified</th>
-                    <th className="actions-col">Actions</th>
+                    <th>Doc Number</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Folder</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredIssuances.map(issuance => (
                     <tr key={issuance.id} draggable onDragStart={(e) => onDragStart(e, issuance.id, 'issuance')}>
+                      <td style={{ color: '#e63946', fontWeight: 700 }}>{issuance.doc_number}</td>
+                      <td>{issuance.title}</td>
                       <td>
-                        <input type="checkbox" checked={bulkSelection.includes(issuance.id)} onChange={() => {
-                          setBulkSelection(prev => prev.includes(issuance.id) ? prev.filter(i => i !== issuance.id) : [...prev, issuance.id]);
-                        }} />
+                        <span className="admin-badge" style={{ background: '#00b4d8', color: '#fff', fontWeight: 700 }}>
+                          {issuance.category_name || issuance.category || 'N/A'}
+                        </span>
                       </td>
-                      <td className="doc-name-cell">
-                        <span className="doc-icon">📄</span>
-                        <div className="doc-info-stack">
-                          <span className="doc-title">{issuance.title}</span>
-                          <span className="doc-category">{issuance.category_name}</span>
-                        </div>
-                      </td>
-                      <td>{issuance.doc_number}</td>
-                      <td>{issuance.owner_name || 'System'}</td>
-                      <td>
-                        <span className={`admin-badge status-${issuance.status}`}>{issuance.status}</span>
-                      </td>
-                      <td>
-                        <div className="file-meta-stack">
-                          <span className="file-type">{issuance.file_type || 'PDF'}</span>
-                          <span className="file-size">{(issuance.file_size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
-                      </td>
-                      <td>{new Date(issuance.date_issued).toLocaleDateString()}</td>
+                      <td>{issuance.folder_name || 'Unassigned'}</td>
                       <td className="actions-cell">
                         <div className="action-button-group">
-                          <button className="icon-btn-row" title="Preview" onClick={() => window.open(issuance.file_path, '_blank')}>👁️</button>
-                          <button className="icon-btn-row" title="Edit" onClick={() => { setModalType('issuance'); setFormData(issuance); setIsModalOpen(true); }}>✏️</button>
-                          <a href={issuance.file_path} download className="icon-btn-row" title="Download">⬇️</a>
-                          <button className="icon-btn-row danger" title="Delete" onClick={() => { if(confirm('Are you sure you want to archive this issuance?')) deleteIssuance(issuance.id, 'Admin delete').then(loadData); }}>🗑️</button>
+                          <button className="icon-btn-row" title="Edit" style={{ border: '1px solid #2196f3', color: '#2196f3', background: '#fff', marginRight: 4 }} onClick={() => { setModalType('issuance'); setFormData(issuance); setIsModalOpen(true); }}>Edit</button>
+                          <button className="icon-btn-row danger" title="Delete" style={{ border: '1px solid #e63946', color: '#e63946', background: '#fff' }} onClick={() => { if(window.confirm('Are you sure you want to delete this issuance?')) deleteIssuance(issuance.id, 'Admin delete').then(loadData); }}>Delete</button>
                         </div>
                       </td>
                     </tr>
                   ))}
                   {filteredIssuances.length === 0 && !loading && (
-                    <tr><td colSpan="8" className="admin-empty-table">No documents available here.</td></tr>
+                    <tr><td colSpan="5" className="admin-empty-table">No documents found in this folder.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -495,56 +488,19 @@ const AdminIssuancesMgmt = () => {
 
       {/* Premium Modal Implementation */}
       {isModalOpen && (
-        <div className="admin-modal-overlay animate-fade-in" onClick={() => setIsModalOpen(false)}>
-          <div className="admin-modal-card" onClick={e => e.stopPropagation()}>
-            <header className="admin-modal-header">
-              <h3>{modalType === 'folder' ? 'Create Premium Folder' : 'New Document Entry'}</h3>
-              <button className="close-btn" onClick={() => setIsModalOpen(false)}>✕</button>
-            </header>
-            
-            {modalType === 'folder' ? (
-              <CreateFolderForm 
-                initialParentId={selectedFolder?.id}
-                onCancel={() => setIsModalOpen(false)}
-                onSuccess={handleCreateFolderSuccess}
-              />
-            ) : (
-              <form className="admin-form" onSubmit={handleCreateIssuance}>
-                <div className="admin-form-group">
-                  <label>Name or Title</label>
-                  <input 
-                    type="text" 
-                    className="admin-form-input"
-                    required 
-                    placeholder="Enter document title..."
-                    onChange={e => setFormData({...formData, title: e.target.value})} 
-                  />
-                </div>
-                
-                <div className="admin-form-group">
-                  <label>Document Number</label>
-                  <input 
-                    type="text" 
-                    className="admin-form-input"
-                    required 
-                    onChange={e => setFormData({...formData, doc_number: e.target.value})} 
-                  />
-                </div>
-                <div className="admin-form-group">
-                  <label>Files (Max 50MB each)</label>
-                  <input type="file" multiple onChange={(e) => setSelectedFiles(Array.from(e.target.files))} />
-                </div>
-
-                <div className="admin-modal-footer">
-                  <button type="button" className="admin-btn-ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="admin-btn-primary" disabled={loading}>
-                    {loading ? 'Uploading...' : 'Begin Upload'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
+        modalType === 'folder' ? (
+          <CreateFolderForm 
+            initialParentId={selectedFolder?.id}
+            onCancel={() => setIsModalOpen(false)}
+            onSuccess={handleCreateFolderSuccess}
+          />
+        ) : (
+          <IssuanceForm
+            initial={{ folder_id: selectedFolder?.id || '' }}
+            onCancel={() => setIsModalOpen(false)}
+            onSave={handleSave}
+          />
+        )
       )}
     </div>
   );

@@ -39,3 +39,15 @@ export const deleteSchool = async (id) => {
   const res = await api.delete(`/schools/${id}`);
   return res.data;
 };
+
+/**
+ * Upload school logo (image).
+ * @param {number|string} id
+ * @param {File} file
+ */
+export const uploadSchoolLogo = async (id, file) => {
+  const form = new FormData();
+  form.append('logo', file);
+  const res = await api.post(`/schools/${id}/logo`, form);
+  return res.data;
+};

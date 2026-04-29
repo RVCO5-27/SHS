@@ -1,0 +1,310 @@
+/* Activity Log — aligned with admin-console, School Management table card, globals tokens */
+
+.audit-page__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #1e293b);
+}
+
+.audit-page__lead {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #64748b);
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+.audit-toolbar .form-control,
+.audit-toolbar .form-select {
+  font-size: 0.95rem;
+  min-height: 2.75rem;
+}
+
+/* Same shell as .school-mgmt-table-card — white card, slate border, soft shadow */
+.audit-table-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+/* Bootstrap table + Activity Log readability */
+.audit-table {
+  font-size: 0.95rem;
+  margin-bottom: 0;
+  color: #334155;
+}
+
+.audit-table__th {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.audit-table thead th:first-child {
+  padding-left: 1.5rem;
+}
+
+.audit-table tbody td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.audit-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.audit-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.audit-table .audit-col-date {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pills — same palette as before (Bootstrap-adjacent greens/reds/yellows/gray) */
+.audit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 2rem;
+  line-height: 1.2;
+}
+
+.audit-pill--success {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.audit-pill--danger {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.audit-pill--warn {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.audit-pill--neutral {
+  background: #e9ecef;
+  color: #343a40;
+}
+
+.audit-person {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.audit-person__sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.audit-ip {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
+}
+
+.audit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Shared button base — matches slate + primary tokens from globals */
+.audit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  min-height: 2.75rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
+}
+
+.audit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.audit-btn:focus-visible {
+  outline: 2px solid var(--primary, #2563eb);
+  outline-offset: 2px;
+}
+
+.audit-btn__icon {
+  flex-shrink: 0;
+  font-size: 0.95em;
+}
+
+.audit-btn__icon--spin {
+  animation: audit-spin 0.85s linear infinite;
+}
+
+@keyframes audit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.audit-btn--primary {
+  background: var(--primary, #2563eb);
+  color: #fff;
+  border-color: var(--primary-dark, #1d4ed8);
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+}
+
+.audit-btn--primary:hover:not(:disabled) {
+  background: var(--primary-dark, #1d4ed8);
+  border-color: #1e40af;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.audit-btn--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+}
+
+.audit-btn--secondary {
+  background: #fff;
+  color: #475569;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.audit-btn--secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.audit-btn--ghost {
+  background: transparent;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.audit-btn--ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+.audit-btn--page {
+  min-width: 7.75rem;
+  background: #fff;
+  color: #475569;
+  border-color: #e2e8f0;
+  font-size: 0.9rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+}
+
+.audit-btn--page:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.audit-btn--icon {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  background: #fff;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.audit-btn--icon:hover:not(:disabled) {
+  background: #f8fafc;
+  color: var(--primary, #2563eb);
+  border-color: #bfdbfe;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.audit-btn--icon:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.audit-btn--wide {
+  min-width: 9.5rem;
+}
+
+.audit-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+}
+
+.audit-pagination__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.audit-modal__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.audit-load-error {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-md, 0.75rem);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.95rem;
+}
+
+.audit-modal .modal-title {
+  font-size: 1.15rem;
+}
+
+.audit-modal .modal-body {
+  font-size: 0.95rem;
+}
+

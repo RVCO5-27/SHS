@@ -2,6 +2,7 @@ const db = require('../config/db');
 const storageService = require('../services/storageService');
 const securityService = require('../services/securityService');
 const metadataService = require('../services/metadataService');
+const { logCreate, logUpdate, logDelete, calculateDiff, getClientIp, getUserAgent } = require('../services/auditService');
 
 /**
  * Issuance Admin Controller - Document and Record management
@@ -19,10 +20,18 @@ class IssuanceAdminController {
       } = req.query;
 
       let sql = `
-        SELECT i.*, c.name as category_name, f.name as folder_name
+        SELECT i.*, c.name as category_name, f.name as folder_name,
+               fp.path as file_path, fp.mimetype as file_type, fp.size as file_size
         FROM issuances i
         LEFT JOIN categories c ON i.category_id = c.id
         LEFT JOIN folders f ON i.folder_id = f.id
+        LEFT JOIN (
+          SELECT issuance_id, MIN(file_id) AS file_id
+          FROM issuance_files
+          WHERE is_primary = 1
+          GROUP BY issuance_id
+        ) ifi ON i.id = ifi.issuance_id
+        LEFT JOIN files fp ON ifi.file_id = fp.id
         WHERE i.deleted_at IS NULL
       `;
       const params = [];
@@ -62,7 +71,12 @@ class IssuanceAdminController {
       sql += ` ORDER BY i.id DESC LIMIT ?`;
       params.push(parseInt(limit));
 
+      console.log('[listIssuances] Executing SQL:', sql);
+      console.log('[listIssuances] With params:', params);
       const [rows] = await db.execute(sql, params);
+      
+      console.log('[listIssuances] Found rows:', rows.length, 'records');
+      console.log('[listIssuances] First row sample:', rows.length > 0 ? JSON.stringify(rows[0]).substring(0, 200) : 'No rows');
       
       const nextCursor = rows.length > 0 ? rows[rows.length - 1].id : null;
 
@@ -73,6 +87,7 @@ class IssuanceAdminController {
           nextCursor
         }
       });
+      console.log('[listIssuances] Response sent successfully');
     } catch (err) {
       next(err);
     }
@@ -82,6 +97,10 @@ class IssuanceAdminController {
    * Create issuance record and handle multi-file upload
    */
   async createIssuance(req, res, next) {
+    console.log('[createIssuance] Starting...');
+    console.log('[createIssuance] Body keys:', Object.keys(req.body || {}));
+    console.log('[createIssuance] Files:', req.files ? req.files.length : 0);
+    
     const connection = await db.getConnection();
     await connection.beginTransaction();
 
@@ -92,6 +111,13 @@ class IssuanceAdminController {
         category_id, folder_id, language, jurisdiction,
         status = 'published', signatory, tags
       } = req.body;
+
+      console.log('[createIssuance] Parsed title:', title, 'doc_number:', doc_number, 'signatory:', signatory);
+
+      // Default signatory to uploader's name if not provided
+      if (!signatory || signatory.trim() === '') {
+        signatory = req.user ? (req.user.full_name || req.user.name || req.user.username) : null;
+      }
 
       // Deterministic doc_number generation if missing
       if (!doc_number || doc_number.trim() === '') {
@@ -134,6 +160,7 @@ class IssuanceAdminController {
 
       // 2. Handle Files
       if (req.files && req.files.length > 0) {
+        let fileIndex = 0;
         for (const file of req.files) {
           // Virus Scan
           const isClean = await securityService.scanForMalware(file.buffer);
@@ -164,8 +191,9 @@ class IssuanceAdminController {
           // Junction table
           await connection.execute(
             'INSERT INTO issuance_files (issuance_id, file_id, is_primary) VALUES (?, ?, ?)',
-            [issuanceId, fileId, file === req.files[0] ? 1 : 0]
+            [issuanceId, fileId, fileIndex === 0 ? 1 : 0]
           );
+          fileIndex += 1;
 
           // Update full_text_content if PDF
           if (fullText) {
@@ -179,14 +207,19 @@ class IssuanceAdminController {
 
       await connection.commit();
 
-      // Audit log
-      try {
-        await db.execute(
-          'INSERT INTO audit_logs (user_id, action_type, record_id, old_value, new_value) VALUES (?, ?, ?, ?, ?)',
-          [req.user ? req.user.id : null, 'CREATE_ISSUANCE', issuanceId, null, JSON.stringify({ title, doc_number, status })]
+      // Log to audit system
+      const newIssuanceData = { title, doc_number, status, category_id, folder_id, date_issued };
+      if (req.user) {
+        await logCreate(
+          req.user.id,
+          'issuances',
+          newIssuanceData,
+          issuanceId,
+          'issuance',
+          `Created issuance: ${title}`,
+          getClientIp(req),
+          getUserAgent(req)
         );
-      } catch (logErr) {
-        console.error('[IssuanceAdminController] Failed to log action:', logErr.message);
       }
 
       res.status(201).json({ id: issuanceId, message: 'Issuance created successfully' });
@@ -213,6 +246,12 @@ class IssuanceAdminController {
         category_id, folder_id, language, jurisdiction,
         status, signatory, tags
       } = req.body;
+
+      // Get old issuance data before update for audit log
+      const [[oldData]] = await connection.execute(
+        'SELECT id, title, doc_number, status, category_id, folder_id, date_issued FROM issuances WHERE id = ?',
+        [id]
+      );
 
       // 1. Update Metadata
       await connection.execute(
@@ -243,6 +282,13 @@ class IssuanceAdminController {
 
       // 2. Handle Files (if any)
       if (req.files && req.files.length > 0) {
+        // When uploading new files on update, mark previous primary links as non-primary
+        // so the issuance continues to have at most one primary file.
+        await connection.execute(
+          'UPDATE issuance_files SET is_primary = 0 WHERE issuance_id = ?',
+          [id]
+        );
+        let fileIndex = 0;
         for (const file of req.files) {
           // Virus Scan
           const isClean = await securityService.scanForMalware(file.buffer);
@@ -273,8 +319,9 @@ class IssuanceAdminController {
           // Junction table
           await connection.execute(
             'INSERT INTO issuance_files (issuance_id, file_id, is_primary) VALUES (?, ?, ?)',
-            [id, fileId, file === req.files[0] ? 1 : 0]
+            [id, fileId, fileIndex === 0 ? 1 : 0]
           );
+          fileIndex += 1;
 
           // Update full_text_content if PDF
           if (fullText) {
@@ -288,14 +335,22 @@ class IssuanceAdminController {
 
       await connection.commit();
 
-      // Audit log
-      try {
-        await db.execute(
-          'INSERT INTO audit_logs (user_id, action_type, record_id, old_value, new_value) VALUES (?, ?, ?, ?, ?)',
-          [req.user ? req.user.id : null, 'UPDATE_ISSUANCE', id, null, JSON.stringify({ title, doc_number, status })]
+      // Log to audit system
+      if (req.user && oldData) {
+        const updatedData = { title, doc_number, status, category_id, folder_id, date_issued };
+        const diff = calculateDiff(oldData, updatedData);
+        await logUpdate(
+          req.user.id,
+          'issuances',
+          oldData,
+          updatedData,
+          id,
+          'issuance',
+          diff,
+          `Updated issuance: ${title}`,
+          getClientIp(req),
+          getUserAgent(req)
         );
-      } catch (logErr) {
-        console.error('[IssuanceAdminController] Failed to log action:', logErr.message);
       }
 
       res.json({ id, message: 'Issuance updated successfully' });
@@ -315,19 +370,29 @@ class IssuanceAdminController {
       const { id } = req.params;
       const { reason } = req.body;
 
+      // Get issuance before deletion for audit log
+      const [[issuanceData]] = await db.execute(
+        'SELECT id, title, doc_number, status FROM issuances WHERE id = ?',
+        [id]
+      );
+
       await db.execute(
         'UPDATE issuances SET deleted_at = NOW(), status = "archived" WHERE id = ?',
         [id]
       );
 
-      // Audit log
-      try {
-        await db.execute(
-          'INSERT INTO audit_logs (user_id, action_type, record_id, old_value, new_value) VALUES (?, ?, ?, ?, ?)',
-          [req.user ? req.user.id : null, 'DELETE_ISSUANCE', id, JSON.stringify({ status: 'active' }), JSON.stringify({ status: 'archived', reason })]
+      // Log to audit system
+      if (req.user) {
+        await logDelete(
+          req.user.id,
+          'issuances',
+          issuanceData,
+          id,
+          'issuance',
+          `Archived issuance: ${issuanceData?.title}`,
+          getClientIp(req),
+          getUserAgent(req)
         );
-      } catch (logErr) {
-        console.error('[IssuanceAdminController] Failed to log delete action:', logErr.message);
       }
 
       res.json({ message: 'Issuance archived successfully' });

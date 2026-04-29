@@ -12,6 +12,19 @@ const {
   setAdminMustChangePassword,
 } = require('../utils/adminQuery');
 const { logAuthEvent, clientIp } = require('../services/authAudit');
+const {
+  logLogin,
+  logLogout,
+  getClientIp,
+  getUserAgent,
+  logSessionTimeout,
+  logCriticalError,
+  logUpdate,
+  calculateDiff,
+  logAuditEvent,
+} = require('../services/auditService');
+const { sendRecoveryEmail } = require('../services/recoveryMail');
+const crypto = require('crypto');
 
 const MAX_PASSWORD_LENGTH = 72;
 
@@ -73,12 +86,13 @@ exports.login = async (req, res, next) => {
 
     if (attemptsTableAvailable) {
       const gate = await attemptService.checkLoginAllowed(admin.id);
+      console.log('[DEBUG] checkLoginAllowed result for', admin.username, ':', JSON.stringify(gate));
       if (!gate.allowed && gate.code === 'BLOCKED') {
         await logAuthEvent('LOGIN_REJECTED_ACCOUNT_BLOCKED', { adminId: admin.id, ip });
         return res.status(403).json({
           code: 'ACCOUNT_BLOCKED',
           message:
-            'Your account is blocked. If this address is on file, a recovery link was sent to your DepEd email.',
+            'Your account is blocked. Use your recovery link sent to your registered email. If none arrived, contact ICT to unlock your account.',
         });
       }
       if (!gate.allowed && gate.code === 'LOCKED') {
@@ -98,7 +112,11 @@ exports.login = async (req, res, next) => {
     }
 
     const ok = await bcrypt.compare(password, hash);
+    console.log('[DEBUG] Password check for', admin.username, ':', ok);
     if (!ok) {
+      // Log failed login to audit system
+      await logLogin(admin.id, getClientIp(req), getUserAgent(req), false);
+      
       if (attemptsTableAvailable) {
         try {
           const fail = await attemptService.recordFailedAttempt(
@@ -109,11 +127,23 @@ exports.login = async (req, res, next) => {
           );
           if (fail.blocked) {
             await logAuthEvent('LOGIN_REJECTED_ACCOUNT_BLOCKED', { adminId: admin.id, ip });
+            let blockedMessage = 'Your account is blocked. Please contact ICT for assistance.';
+            if (fail.recoverySent) {
+              blockedMessage =
+                'Your account is blocked. A recovery link was sent to your registered recovery email.';
+            } else if (fail.recoveryReason === 'NO_EMAIL_ON_FILE' || !depedEmail) {
+              blockedMessage =
+                'Your account is blocked. No recovery email is on file. Please contact ICT.';
+            } else if (fail.recoveryReason === 'MAIL_NOT_CONFIGURED') {
+              blockedMessage =
+                'Your account is blocked. Recovery email service is not configured yet. Please contact ICT.';
+            } else if (fail.recoveryReason === 'MAIL_SEND_FAILED') {
+              blockedMessage =
+                'Your account is blocked. We could not deliver the recovery email. Please contact ICT.';
+            }
             return res.status(403).json({
               code: 'ACCOUNT_BLOCKED',
-              message: depedEmail
-                ? 'Your account is blocked. A recovery link has been sent to your DepEd email.'
-                : 'Your account is blocked. Contact ICT — no DepEd email is registered for recovery.',
+              message: blockedMessage,
             });
           }
           if (fail.attemptCount === 3) {
@@ -150,6 +180,9 @@ exports.login = async (req, res, next) => {
 
     await logAuthEvent('LOGIN_SUCCESS', { adminId: admin.id, ip });
 
+    // Log to audit system
+    await logLogin(admin.id, getClientIp(req), getUserAgent(req), true);
+
     try {
       await db.execute('UPDATE admins SET last_login = NOW() WHERE id = ?', [admin.id]);
     } catch (updateErr) {
@@ -165,8 +198,17 @@ exports.login = async (req, res, next) => {
       return res.status(500).json({ message: 'Authentication service misconfigured' });
     }
 
+    // Set HttpOnly, Secure cookie (8 hours expiration)
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 8 * 60 * 60 * 1000, // 8 hours in milliseconds
+      path: '/',
+    });
+
     res.json({
-      token,
+      token: token,
       expiresIn: '8h',
       mustChangePassword: mustChange,
       user: {
@@ -175,6 +217,7 @@ exports.login = async (req, res, next) => {
         role: admin.role || 'Editor',
         email: depedEmail || undefined,
         full_name: admin.full_name || undefined,
+        avatar: admin.avatar_url || undefined,
       },
     });
   } catch (err) {
@@ -301,6 +344,15 @@ exports.changePassword = async (req, res, next) => {
     admin.must_change_password = 0;
     const token = signJwt(admin, false);
 
+    // Set updated token in cookie
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 8 * 60 * 60 * 1000,
+      path: '/',
+    });
+
     res.json({
       token,
       mustChangePassword: false,
@@ -316,8 +368,35 @@ exports.changePassword = async (req, res, next) => {
   }
 };
 
-exports.logout = (req, res) => {
-  res.status(204).send();
+exports.logout = async (req, res, next) => {
+  try {
+    const userId = req.user && req.user.id;
+    
+    // Log logout event to audit system
+    if (userId) {
+      await logLogout(userId, getClientIp(req), getUserAgent(req));
+    }
+    
+    // Clear authentication cookie
+    res.clearCookie('authToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    
+    res.status(204).send();
+  } catch (err) {
+    // Don't fail the logout if audit logging fails
+    console.error('[auth.logout] Audit logging error:', err.message);
+    res.clearCookie('authToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    res.status(204).send();
+  }
 };
 
 exports.getProfile = async (req, res, next) => {
@@ -335,11 +414,20 @@ exports.getProfile = async (req, res, next) => {
     }
 
     const [rows] = await db.execute(
-      'SELECT id, username, email, role, full_name FROM admins WHERE id = ? LIMIT 1',
+      'SELECT id, username, email, role, full_name, avatar_url AS avatar, must_change_password FROM admins WHERE id = ? LIMIT 1',
       [userId]
     );
     if (!rows.length) return res.status(404).json({ message: 'Admin not found' });
-    res.json(rows[0]);
+    const a = rows[0];
+    res.json({
+      id: a.id,
+      username: a.username,
+      email: a.email,
+      role: a.role,
+      full_name: a.full_name,
+      avatar: a.avatar,
+      mustChangePassword: Number(a.must_change_password) === 1,
+    });
   } catch (err) {
     next(err);
   }
@@ -351,39 +439,85 @@ exports.updateProfile = async (req, res, next) => {
     const principal = req.user.principal || 'admins';
     
     const body = req.body || {};
-    const { full_name, email } = body;
+    const { full_name, email, avatar } = body;
 
     if (principal === 'users') {
       const [current] = await db.execute('SELECT email FROM users WHERE id = ?', [userId]);
       if (!current.length) return res.status(404).json({ message: 'User not found' });
       const user = current[0];
-      
-      await db.execute(
-        'UPDATE users SET email = ? WHERE id = ?',
-        [
-          email !== undefined ? email : user.email, 
-          userId
-        ]
-      );
+      const nextEmail = email !== undefined ? email : user.email;
+      const oldValue = { email: user.email };
+      const newValue = { email: nextEmail };
+
+      await db.execute('UPDATE users SET email = ? WHERE id = ?', [nextEmail, userId]);
+
+      try {
+        const diff = calculateDiff(oldValue, newValue);
+        if (diff.added || Object.keys(diff.modified || {}).length || diff.removed) {
+          await logUpdate(
+            userId,
+            'account',
+            oldValue,
+            newValue,
+            userId,
+            'user_profile',
+            diff,
+            'Updated account email',
+            getClientIp(req),
+            getUserAgent(req)
+          );
+        }
+      } catch (e) {
+        /* audit must not block profile save */
+      }
     } else {
-      const [current] = await db.execute('SELECT full_name, email FROM admins WHERE id = ?', [userId]);
+      const [current] = await db.execute('SELECT full_name, email, avatar_url FROM admins WHERE id = ?', [userId]);
       if (!current.length) return res.status(404).json({ message: 'Admin not found' });
       const admin = current[0];
+      const nextFull = full_name !== undefined ? full_name : admin.full_name;
+      const nextEmail = email !== undefined ? email : admin.email;
+      const nextAvatar = avatar !== undefined ? avatar : admin.avatar_url;
+      const oldValue = {
+        full_name: admin.full_name,
+        email: admin.email,
+        avatar_url: admin.avatar_url,
+      };
+      const newValue = {
+        full_name: nextFull,
+        email: nextEmail,
+        avatar_url: nextAvatar,
+      };
 
       await db.execute(
-        'UPDATE admins SET full_name = ?, email = ? WHERE id = ?',
-        [
-          full_name !== undefined ? full_name : admin.full_name, 
-          email !== undefined ? email : admin.email, 
-          userId
-        ]
+        'UPDATE admins SET full_name = ?, email = ?, avatar_url = ? WHERE id = ?',
+        [nextFull, nextEmail, nextAvatar, userId]
       );
+
+      try {
+        const diff = calculateDiff(oldValue, newValue);
+        if (Object.keys(diff.modified || {}).length || diff.added || diff.removed) {
+          await logUpdate(
+            userId,
+            'account',
+            oldValue,
+            newValue,
+            userId,
+            'admin_profile',
+            diff,
+            'Updated staff profile (name, email, or photo)',
+            getClientIp(req),
+            getUserAgent(req)
+          );
+        }
+      } catch (e) {
+        /* audit must not block profile save */
+      }
     }
 
     const [updated] = await db.execute(
       principal === 'users' 
         ? 'SELECT id, username, email, role FROM users WHERE id = ?'
-        : 'SELECT id, username, email, role, full_name FROM admins WHERE id = ?',
+        : 'SELECT id, username, email, role, full_name, avatar_url as avatar FROM admins WHERE id = ?',
       [userId]
     );
 
@@ -391,6 +525,120 @@ exports.updateProfile = async (req, res, next) => {
       message: 'Profile updated successfully',
       user: updated[0]
     });
+  } catch (err) {
+    console.error('updateProfile error:', err);
+    next(err);
+  }
+};
+
+/**
+ * Avatar Upload — multipart handled by multer in routes/auth.js (field name: avatar)
+ * Returns: { message, avatarUrl }
+ */
+exports.uploadAvatar = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file provided' });
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+    // Update database
+    const [current] = await db.execute(
+      'SELECT avatar_url FROM admins WHERE id = ?',
+      [userId]
+    );
+
+    if (!current.length) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    // Delete old avatar file if it exists
+    if (current[0].avatar_url) {
+      const oldPath = path.join(__dirname, '..', current[0].avatar_url);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    // Update avatar_url in database
+    await db.execute(
+      'UPDATE admins SET avatar_url = ? WHERE id = ?',
+      [avatarUrl, userId]
+    );
+
+    res.json({
+      message: 'Avatar uploaded successfully',
+      avatarUrl: avatarUrl
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * SuperAdmin-only: send a real recovery email to the currently signed-in admin.
+ * This creates a token row in login_recovery so the link is usable.
+ */
+exports.sendTestRecoveryEmail = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Login required' });
+
+    const rows = await selectAdminById(userId);
+    if (!rows.length) return res.status(404).json({ message: 'Account not found' });
+
+    const admin = rows[0];
+    const email = admin.email && String(admin.email).trim() ? String(admin.email).trim() : null;
+    if (!email) {
+      return res.status(422).json({ message: 'No recovery email is saved in your profile.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    try {
+      await db.execute(
+        'INSERT INTO login_recovery (admin_id, email, token, expires_at, used) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), 0)',
+        [admin.id, email, token, 15]
+      );
+    } catch (e) {
+      return res.status(500).json({
+        message: 'Recovery table is missing. Please run the login security migration.',
+      });
+    }
+
+    const result = await sendRecoveryEmail({ to: email, token, username: admin.username });
+    if (!result.sent) {
+      return res.status(500).json({
+        message:
+          result.reason === 'MAIL_NOT_CONFIGURED'
+            ? 'Recovery email service is not configured yet.'
+            : 'Could not send the recovery email. Please check mail settings.',
+      });
+    }
+
+    try {
+      await logAuditEvent({
+        userId: admin.id,
+        action: 'MAINTENANCE_TASK',
+        status: 'SUCCESS',
+        module: 'auth',
+        description: `Sent a test recovery email to ${email}`,
+        recordId: 'recovery_test',
+        resourceType: 'recovery_email',
+        newValue: { email },
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+    } catch {
+      // do not block
+    }
+
+    return res.json({ message: `Test recovery email sent to ${email}.` });
   } catch (err) {
     next(err);
   }

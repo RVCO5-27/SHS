@@ -6,6 +6,6 @@ router.use(authMiddleware);
 router.use(requireAdminRole);
 
 router.use('/users', require('./adminManagement'));
-router.use('/issuances-mgmt', require('./admin/issuances_admin'));
+router.use('/issuances-mgmt', require('./issuances_admin'));
 
 module.exports = router;

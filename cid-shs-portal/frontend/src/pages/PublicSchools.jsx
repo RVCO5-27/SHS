@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAllSchools } from '../services/schools';
+import { resolveFileUrl } from '../services/api';
 import { FaSearch, FaSchool, FaUserTie, FaCalendarAlt, FaBuilding, FaUniversity } from 'react-icons/fa';
 import './PublicSchools.css';
 
@@ -16,7 +17,7 @@ export default function PublicSchools() {
       const params = new URLSearchParams(location.search);
       const type = params.get('type');
       
-      const query = { search: searchTerm };
+      const query = { search: searchTerm, sortBy: 'school_name', order: 'ASC' };
       if (type) {
         query.type = type.charAt(0).toUpperCase() + type.slice(1);
       }
@@ -41,13 +42,13 @@ export default function PublicSchools() {
   const pageTitle = typeParam ? `${typeParam.charAt(0).toUpperCase() + typeParam.slice(1)} Schools` : 'Senior High Schools';
 
   return (
-    <div className="public-schools-page container py-5">
-      <header className="text-center mb-5">
-        <h1 className="display-5 fw-bold text-primary">{pageTitle}</h1>
-        <p className="lead text-muted">Explore {typeParam || 'public and private'} SHS schools in SDO Cabuyao City</p>
+    <div className="public-schools-page container">
+      <header className="page-header">
+        <h1 className="fw-bold text-primary">{pageTitle}</h1>
+        <p className="text-muted">Explore {typeParam || 'public and private'} SHS schools in SDO Cabuyao City</p>
       </header>
 
-      <div className="search-section mb-5">
+      <div className="search-section">
         <div className="row justify-content-center">
           <div className="col-md-8 col-lg-6">
             <div className="input-group input-group-lg shadow-sm">
@@ -67,21 +68,25 @@ export default function PublicSchools() {
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
+        <div className="text-center py-4">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
         </div>
       ) : (
-        <div className="row g-4">
+        <div className="row g-3 g-lg-4">
           {schools.length > 0 ? (
             schools.map((school) => (
               <div key={school.id} className="col-md-6 col-lg-4">
                 <div className="card h-100 border-0 shadow-sm school-card">
                   <div className="card-body">
-                    <div className="d-flex align-items-center mb-3">
+                    <div className="d-flex align-items-center mb-2">
                       <div className="school-icon-wrapper me-3">
-                        <FaSchool />
+                        {school.logo_url ? (
+                          <img className="public-school-logo" src={resolveFileUrl(school.logo_url)} alt="" />
+                        ) : (
+                          <FaSchool />
+                        )}
                       </div>
                       <div>
                         <h5 className="card-title mb-0 fw-bold text-dark">{school.school_name}</h5>
@@ -89,26 +94,26 @@ export default function PublicSchools() {
                       </div>
                     </div>
                     
-                    <hr className="my-3 opacity-10" />
+                    <hr className="my-2 opacity-10" />
                     
                     <div className="school-info-item d-flex align-items-center mb-2">
                       <FaUserTie className="text-primary me-2" />
                       <div>
                         <div className="small text-muted">Principal / Head</div>
-                        <div className="fw-semibold">{school.principal_name}</div>
+                        <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>{school.principal_name}</div>
                       </div>
                     </div>
                     
                     <div className="school-info-item d-flex align-items-center mb-2">
                       <FaCalendarAlt className="text-primary me-2" />
                       <div>
-                        <div className="small text-muted">Year Started</div>
-                        <div className="fw-semibold">{school.year_started}</div>
+                        <div className="small text-muted">Year Established</div>
+                        <div className="fw-semibold" style={{ fontSize: '0.95rem' }}>{school.year_started}</div>
                       </div>
                     </div>
                     
-                    <div className="mt-3 d-flex justify-content-between align-items-center">
-                      <span className="badge bg-light text-primary border border-primary-subtle px-3 py-2">
+                    <div className="mt-2 d-flex justify-content-between align-items-center gap-2">
+                      <span className="badge bg-light text-primary border border-primary-subtle px-2 py-1" style={{ fontSize: '0.75rem' }}>
                         {school.designation}
                       </span>
                       <span className={`school-type-badge ${school.school_type.toLowerCase()}`}>
@@ -120,9 +125,9 @@ export default function PublicSchools() {
               </div>
             ))
           ) : (
-            <div className="col-12 text-center py-5">
+            <div className="col-12 text-center py-4">
               <div className="text-muted">
-                <FaSearch size={48} className="mb-3 opacity-25" />
+                <FaSearch size={48} className="mb-2 opacity-25" />
                 <h4>No schools found</h4>
                 <p>Try adjusting your search terms</p>
               </div>

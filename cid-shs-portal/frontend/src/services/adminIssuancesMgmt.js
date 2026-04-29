@@ -41,9 +41,7 @@ export const listIssuances = async (params) => {
 };
 
 export const createIssuance = async (formData) => {
-  const res = await api.post('/admin/issuances-mgmt/issuances', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  const res = await api.post('/admin/issuances-mgmt/issuances', formData);
   return res.data;
 };
 

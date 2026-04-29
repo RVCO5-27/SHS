@@ -1,5 +1,6 @@
 .public-schools-page {
-  min-height: 1000vh;
+  min-height: auto;
+  padding: 1.5rem 0;
 }
 
 .school-card {
@@ -10,6 +11,10 @@
 .school-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.school-card .card-body {
+  padding: 1.25rem;
 }
 
 .school-icon-wrapper {
@@ -23,6 +28,14 @@
   justify-content: center;
   font-size: 1.5rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.public-school-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .school-info-item {
@@ -37,6 +50,26 @@
   opacity: 0.1;
 }
 
+.page-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding: 0;
+}
+
+.page-header h1 {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  margin-bottom: 0.5rem;
+}
+
+.page-header p {
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  margin: 0;
+}
+
+.search-section {
+  margin-bottom: 2rem;
+}
+
 .search-section .input-group {
   border-radius: 12px;
   overflow: hidden;
@@ -44,6 +77,7 @@
 
 .search-section .form-control {
   box-shadow: none;
+  font-size: 0.95rem;
 }
 
 .school-type-badge {

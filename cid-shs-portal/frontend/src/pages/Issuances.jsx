@@ -21,11 +21,14 @@ export default function Issuances() {
   const [activeFolder, setActiveFolder] = useState(null);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterValues, setFilterValues] = useState({
     schoolYear: '',
     category_id: '',
+    dateStart: '',
+    dateEnd: '',
   });
 
   const searchFromUrl = searchParams.get('search') || '';
@@ -37,11 +40,16 @@ export default function Issuances() {
     const loadInitialData = async () => {
       setLoading(true);
       try {
+        console.log('[Issuances] Loading initial data...');
         const [folderData, categoryData, allDocs] = await Promise.all([
           fetchFolders(),
           fetchCategories(),
           searchDocuments({ q: '' })
         ]);
+        
+        console.log('[Issuances] Folders loaded:', folderData);
+        console.log('[Issuances] Categories loaded:', categoryData);
+        console.log('[Issuances] All docs loaded:', allDocs);
         
         setFolders(folderData);
         setCategories(categoryData);
@@ -54,10 +62,12 @@ export default function Issuances() {
         setRecentHighlights(highlights);
         
         if (folderData && folderData.length > 0) {
+          console.log('[Issuances] Setting active folder to:', folderData[0].id);
           setActiveFolder(folderData[0].id);
         }
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        console.error('[Issuances] Error loading initial data:', error);
+        setError('Failed to load data: ' + error.message);
       } finally {
         setLoading(false);
       }
@@ -71,10 +81,12 @@ export default function Issuances() {
     const loadFiles = async () => {
       setLoading(true);
       try {
+        console.log('[Issuances] Loading files for folder:', activeFolder);
         const docs = await fetchFilesForFolder(activeFolder);
+        console.log('[Issuances] Files loaded:', docs);
         if (mounted) setFiles(docs);
       } catch (error) {
-        console.error('Error loading files:', error);
+        console.error('[Issuances] Error loading files:', error);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -153,8 +165,10 @@ export default function Issuances() {
   };
 
   const displayFiles = useMemo(() => {
-    let list = files;
+    let list = files || [];
     const typeParam = searchParams.get('type');
+
+    console.log('[Issuances] displayFiles computing, files:', files, 'activeFilter:', activeFilter, 'typeParam:', typeParam);
 
     if (typeParam === 'advisories') {
       list = list.filter((f) => /advisory/i.test(f.category || f.name));
@@ -172,6 +186,7 @@ export default function Issuances() {
       list = list.filter((f) => /memo|memoranda|division/i.test(f.category || f.name));
     }
 
+    console.log('[Issuances] displayFiles result:', list);
     return list;
   }, [files, activeFilter, searchParams]);
 
@@ -337,13 +352,67 @@ export default function Issuances() {
                   </div>
 
                   <div className="filter-bar">
-                    <select className="filter-select"><option>All Years</option></select>
-                    <select className="filter-select"><option>All Grades</option></select>
-                    <select className="filter-select"><option>All Strands</option></select>
-                    <select className="filter-select"><option>All Types</option></select>
+                    <div className="filter-group">
+                      <label className="filter-label">Document Type</label>
+                      <select 
+                        className="filter-select"
+                        value={filterValues.category_id}
+                        onChange={(e) => handleFilterChange('category_id', e.target.value)}
+                      >
+                        <option value="">Select Type (Optional)</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="filter-group">
+                      <label className="filter-label">From Date</label>
+                      <input 
+                        type="date"
+                        className="filter-input"
+                        value={filterValues.dateStart}
+                        onChange={(e) => handleFilterChange('dateStart', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="filter-group">
+                      <label className="filter-label">To Date</label>
+                      <input 
+                        type="date"
+                        className="filter-input"
+                        value={filterValues.dateEnd}
+                        onChange={(e) => handleFilterChange('dateEnd', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="filter-group">
+                      <button 
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => {
+                          setFilterValues({
+                            schoolYear: '',
+                            category_id: '',
+                            dateStart: '',
+                            dateEnd: '',
+                          });
+                          setFiles([]);
+                        }}
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
                   </div>
 
                   <div className="document-table-wrap">
+                    {error && (
+                      <div className="alert alert-danger m-3">
+                        {error}
+                        <button className="btn btn-sm btn-outline-danger ms-2" onClick={() => setError(null)}>Dismiss</button>
+                      </div>
+                    )}
                     {loading ? (
                       <div className="loading-spinner">
                         <div className="spinner-border text-primary" role="status">
@@ -375,8 +444,8 @@ export default function Issuances() {
                                     type="button"
                                     className="btn btn-sm btn-light border d-flex align-items-center gap-1"
                                     onClick={() => {
-                                      if (file.file_path && file.file_path !== 'default.pdf') {
-                                        window.open(`/uploads/${file.file_path}`, '_blank');
+                                      if (file.file_path) {
+                                        window.open(file.file_path, '_blank');
                                       } else {
                                         alert('File attachment not found.');
                                       }
@@ -384,8 +453,26 @@ export default function Issuances() {
                                   >
                                     <span style={{ fontSize: '10px' }}>👁️</span> View
                                   </button>
-                                  <button className="btn btn-sm btn-primary" style={{ width: '32px', padding: '0' }}>⬇️</button>
-                                  <button className="btn btn-sm btn-danger" style={{ width: '32px', padding: '0' }}>🗑️</button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-primary"
+                                    style={{ width: '32px', padding: '0' }}
+                                    onClick={() => {
+                                      if (file.file_path) {
+                                        const link = document.createElement('a');
+                                        link.href = file.file_path;
+                                        link.download = file.name;
+                                        link.target = '_blank';
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                      } else {
+                                        alert('File attachment not found.');
+                                      }
+                                    }}
+                                  >
+                                    ⬇️
+                                  </button>
                                 </div>
                               </td>
                             </tr>

@@ -1,5 +1,8 @@
 /**
- * DepEd / SMTP recovery mail — set SMTP_* env vars in production.
+ * Recovery email sender.
+ * Supports:
+ * 1) Generic SMTP via SMTP_*
+ * 2) Gmail via GMAIL_USER + GMAIL_APP_PASSWORD
  * Falls back to console log in development.
  */
 require('dotenv').config();
@@ -23,34 +26,54 @@ If you did not attempt to sign in, contact your division ICT office immediately.
 
 — SDO Cabuyao SHS Portal`;
 
+  const nodemailer = require('nodemailer');
+  let transporter = null;
+  let fromAddress = null;
+  let mode = 'none';
+
   if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    try {
-      const nodemailer = require('nodemailer');
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS || '',
-        },
-      });
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to,
-        subject,
-        text,
-      });
-      return { sent: true };
-    } catch (err) {
-      console.error('SMTP recovery send failed:', err.message);
-      return { sent: false, link };
-    }
+    mode = 'smtp';
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS || '',
+      },
+    });
+    fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER;
+  } else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    mode = 'gmail';
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    });
+    fromAddress = process.env.SMTP_FROM || process.env.GMAIL_USER;
   }
 
-  console.warn('[recovery] SMTP not configured — recovery link (dev):');
-  console.warn(link);
-  return { sent: false, link };
+  if (!transporter) {
+    console.warn('[recovery] SMTP not configured — recovery link (dev):');
+    console.warn(link);
+    return { sent: false, link, reason: 'MAIL_NOT_CONFIGURED' };
+  }
+
+  try {
+    await transporter.sendMail({
+      from: fromAddress,
+      to,
+      subject,
+      text,
+    });
+    return { sent: true };
+  } catch (err) {
+    console.error(`[recovery] ${mode.toUpperCase()} send failed:`, err.message);
+    return { sent: false, link, reason: 'MAIL_SEND_FAILED' };
+  }
+
 }
 
 module.exports = { sendRecoveryEmail, buildRecoveryLink };

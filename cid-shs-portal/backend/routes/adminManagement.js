@@ -12,3 +12,4 @@ router.put('/:id', adminManagementController.updateUser);
 router.delete('/:id', adminManagementController.deleteUser);
 
 module.exports = router;
+

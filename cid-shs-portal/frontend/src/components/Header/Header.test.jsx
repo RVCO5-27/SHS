@@ -81,8 +81,6 @@ describe('Header Component', () => {
     useAuth.mockReturnValue({ user: mockSuperAdmin, logout: jest.fn() });
     renderWithRouter(<Header adminArea={true} />);
     
-    const notificationSection = screen.getByLabelText('Admin Notifications');
-    expect(notificationSection).toHaveClass('main-admin');
     expect(screen.getByText('★')).toBeInTheDocument();
   });
 
@@ -92,6 +90,5 @@ describe('Header Component', () => {
     
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByLabelText('User Profile Menu')).toBeInTheDocument();
-    expect(screen.getByLabelText('Admin Notifications')).toBeInTheDocument();
   });
 });

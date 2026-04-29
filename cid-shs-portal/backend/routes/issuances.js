@@ -20,3 +20,4 @@ router.get('/years', issuancesController.getYears);
 router.get('/folders', issuancesController.getPublicFolders);
 
 module.exports = router;
+

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout.jsx';
-import RequireHttps from './components/admin/RequireHttps.jsx';
+import RequireHttps from './components/RequireHttps.jsx';
 import Home from './pages/Home.jsx';
 import About from './pages/About.jsx';
 import Issuances from './pages/Issuances.jsx';
@@ -34,7 +34,12 @@ function AdminShell({ children }) {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Layout />}>

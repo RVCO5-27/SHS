@@ -1,8 +1,4 @@
-/* Base styles */
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
+/* Sidebar — font inherits from globals.css (system stack via --font-family) */
 
 /* Sidebar */
 .sidebar {
@@ -247,16 +243,16 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1rem;
   transition: left 0.3s ease;
 }
 
 /* Modal dialog: fixed width matching layout content, dynamic height */
 .schools-modal-dialog {
-  width: 1248px !important;
-  max-width: 90vw !important;
+  width: min(1248px, calc(100vw - 260px - 2rem)) !important;
+  max-width: none !important;
   height: auto !important;
-  max-height: 85vh !important;
+  max-height: 90vh !important;
   display: flex !important;
   flex-direction: column !important;
   margin: auto !important;
@@ -283,6 +279,7 @@ body {
 /* Table styling: optimized for 1248px width, no right whitespace */
 .image-reference-table {
   width: 100% !important;
+  min-width: 860px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
@@ -293,7 +290,7 @@ body {
   color: #ffffff !important;
   font-weight: 600;
   font-size: 0.85rem;
-  padding: 1.25rem 1.5rem;
+  padding: 0.95rem 1rem;
   text-align: left;
   border: none;
   text-transform: uppercase;
@@ -302,8 +299,8 @@ body {
 }
 
 .image-reference-table tbody td {
-  padding: 1.25rem 1.5rem; /* Increased padding for premium feel */
-  font-size: 1rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
   color: #334155;
   border-bottom: 1px solid #f1f5f9;
   white-space: nowrap;
@@ -311,20 +308,77 @@ body {
   text-overflow: ellipsis;
 }
 
-/* Precise column distribution to eliminate dead space */
-.image-reference-table th:nth-child(1), .image-reference-table td:nth-child(1) { width: 120px; } /* Increased ID width */
-.image-reference-table th:nth-child(2), .image-reference-table td:nth-child(2) { width: 35%; } /* Balanced name */
-.image-reference-table th:nth-child(3), .image-reference-table td:nth-child(3) { width: 25%; }
-.image-reference-table th:nth-child(4), .image-reference-table td:nth-child(4) { width: 20%; }
-.image-reference-table th:nth-child(5), .image-reference-table td:nth-child(5) { width: 100px; text-align: right; }
+/* Allow controlled wrapping for long text columns */
+.image-reference-table td:nth-child(3),
+.image-reference-table td:nth-child(4),
+.image-reference-table td:nth-child(5) {
+  white-space: normal;
+  overflow-wrap: break-word; /* break long words only if needed */
+  word-break: keep-all;      /* avoid letter-by-letter */
+  hyphens: auto;
+  overflow: hidden;
+  line-height: 1.35;
+}
+
+/* Keep ID and year compact */
+.image-reference-table td:nth-child(2),
+.image-reference-table td:nth-child(6) {
+  white-space: nowrap;
+}
+
+/* Keep full school ID visible (including legacy SCH-... IDs) */
+.image-reference-table td:nth-child(2) {
+  overflow: visible;
+  text-overflow: clip;
+  font-weight: 700;
+}
+
+/* Balanced distribution (table has 6 columns) */
+.image-reference-table th:nth-child(1),
+.image-reference-table td:nth-child(1) {
+  width: 72px; /* Logo */
+}
+
+.image-reference-table th:nth-child(2),
+.image-reference-table td:nth-child(2) {
+  width: 150px; /* ID */
+}
+
+.image-reference-table th:nth-child(3),
+.image-reference-table td:nth-child(3) {
+  width: 33%; /* School Name */
+}
+
+.image-reference-table th:nth-child(4),
+.image-reference-table td:nth-child(4) {
+  width: 25%; /* Principal / School Head */
+}
+
+.image-reference-table th:nth-child(5),
+.image-reference-table td:nth-child(5) {
+  width: 16%; /* Designation */
+}
+
+.image-reference-table th:nth-child(6),
+.image-reference-table td:nth-child(6) {
+  width: 156px; /* Year Established */
+  text-align: right;
+}
+
+/* Ensure the final header cell keeps full dark background and text isn't clipped */
+.image-reference-table thead th:last-child {
+  min-width: 156px;
+  padding-right: 1rem;
+}
 
 .schools-modal-header {
-  padding: 1.25rem 1.5rem;
+  padding: 0.95rem 1rem;
   background: #ffffff;
   border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .schools-modal-icon-container {
@@ -352,6 +406,7 @@ body {
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .schools-modal-close-btn:hover {
@@ -363,9 +418,48 @@ body {
 .schools-modal-scroll {
   flex: 1 1 auto;
   overflow-y: auto;
-  overflow-x: hidden !important;
+  overflow-x: auto !important;
   background: #fff;
   min-height: 100px; /* Ensure content is visible */
+}
+
+/* Keep table within modal and allow horizontal scroll when needed */
+.schools-modal-scroll .table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  scrollbar-gutter: stable;
+}
+
+/* On small screens, allow horizontal scroll instead of forced breaking */
+@media (max-width: 768px) {
+  .schools-modal-backdrop {
+    left: 0;
+    padding: 0.5rem;
+  }
+
+  .schools-modal-dialog {
+    width: calc(100vw - 1rem) !important;
+    max-height: 94vh !important;
+  }
+
+  .schools-modal-header {
+    padding: 0.85rem 0.85rem;
+  }
+
+  .schools-modal-icon-container {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+  }
+
+  .schools-modal-scroll .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .image-reference-table {
+    min-width: 840px;
+  }
 }
 
 /* Border between sticky table header and scrolling rows */
@@ -428,6 +522,25 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.schools-modal-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(248, 250, 252, 0.75);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.schools-modal-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* Footer */

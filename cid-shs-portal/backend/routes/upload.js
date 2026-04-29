@@ -6,3 +6,4 @@ const uploadController = require('../controllers/uploadController');
 router.post('/', authMiddleware, requireAdminRole, uploadController.upload.single('file'), uploadController.uploadFile);
 
 module.exports = router;
+

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getAllSchools } from '../services/schools';
-import { setToken } from '../services/api';
+import { resolveFileUrl } from '../services/api';
 import { 
   FaHome, 
   FaInfoCircle, 
@@ -31,7 +31,7 @@ import {
 import './Sidebar.css';
 
 export default function Sidebar({ isOpen = false, variant = 'public' }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState({});
   const [schoolsModalOpen, setSchoolsModalOpen] = useState(false);
   const [selectedSchoolType, setSelectedSchoolType] = useState('public');
@@ -54,6 +54,8 @@ export default function Sidebar({ isOpen = false, variant = 'public' }) {
           // Fetch schools with the correct type filter ('Public' or 'Private') and pagination
           const response = await getAllSchools({ 
             type: selectedSchoolType.charAt(0).toUpperCase() + selectedSchoolType.slice(1),
+            sortBy: 'school_name',
+            order: 'ASC',
             page: pagination.page,
             limit: pagination.limit
           });
@@ -180,17 +182,18 @@ export default function Sidebar({ isOpen = false, variant = 'public' }) {
               <table className="table align-middle mb-0 image-reference-table">
                 <thead>
                   <tr>
+                    <th>Logo</th>
                     <th>ID</th>
                     <th>School Name</th>
                     <th>Principal / School Head</th>
                     <th>Designation</th>
-                    <th className="text-end">Year</th>
+                    <th className="text-end">Year Established</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingSchools ? (
                     <tr>
-                      <td colSpan="5" className="text-center py-5">
+                      <td colSpan="6" className="text-center py-5">
                         <div className="spinner-border text-primary" role="status">
                           <span className="visually-hidden">Loading...</span>
                         </div>
@@ -199,8 +202,15 @@ export default function Sidebar({ isOpen = false, variant = 'public' }) {
                   ) : realSchools.length > 0 ? (
                     realSchools.map((school) => (
                       <tr key={school.id}>
+                        <td>
+                          <div className="schools-modal-logo">
+                            {school.logo_url ? <img src={resolveFileUrl(school.logo_url)} alt="" /> : <span aria-hidden="true">🏫</span>}
+                          </div>
+                        </td>
                         <td className="fw-bold text-primary">{school.school_id}</td>
-                        <td className="fw-medium text-dark">{school.school_name}</td>
+                        <td className="fw-medium text-dark text-truncate" title={school.school_name} style={{ maxWidth: 320 }}>
+                          {school.school_name}
+                        </td>
                         <td>{school.principal_name}</td>
                         <td>
                           <span className="text-muted">{school.designation}</span>
@@ -210,7 +220,7 @@ export default function Sidebar({ isOpen = false, variant = 'public' }) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="text-center py-5 text-muted">
+                      <td colSpan="6" className="text-center py-5 text-muted">
                         <div className="mb-2 fs-2 opacity-25">📁</div>
                         No {selectedSchoolType} schools found.
                       </td>
@@ -306,10 +316,18 @@ export default function Sidebar({ isOpen = false, variant = 'public' }) {
         </NavLink>
       </li>
       {user?.role === 'SuperAdmin' && (
+        <li className={location.pathname === '/admin/schools' ? 'active' : ''}>
+          <NavLink to="/admin/schools">
+            <span className="icon"><FaUniversity /></span>
+            <span>School Management</span>
+          </NavLink>
+        </li>
+      )}
+      {user?.role === 'SuperAdmin' && (
         <li className={location.pathname === '/admin/audit-logs' ? 'active' : ''}>
           <NavLink to="/admin/audit-logs">
             <span className="icon"><FaHistory /></span>
-            <span>Audit Logs</span>
+            <span>Activity Log</span>
           </NavLink>
         </li>
       )}
@@ -347,8 +365,8 @@ export default function Sidebar({ isOpen = false, variant = 'public' }) {
         <button
           type="button"
           className="menu-item menu-item--logout"
-          onClick={() => {
-            setToken(null);
+          onClick={async () => {
+            await logout();
             navigate('/admin/login', { replace: true });
           }}
         >

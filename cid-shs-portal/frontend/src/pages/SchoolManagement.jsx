@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAllSchools, createSchool, updateSchool, deleteSchool } from '../services/schools';
+import { getAllSchools, createSchool, updateSchool, deleteSchool, uploadSchoolLogo } from '../services/schools';
 import { useAuth } from '../context/AuthContext';
 import { FaPlus, FaEdit, FaTrash, FaSearch, FaFilePdf, FaFileExcel, FaFileCsv, FaTimes, FaSchool, FaUserTie, FaCalendarAlt, FaChevronRight } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { resolveFileUrl } from '../services/api';
 import './SchoolManagement.css';
 
 export default function SchoolManagement() {
@@ -14,6 +15,9 @@ export default function SchoolManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingSchool, setEditingSchool] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [toast, setToast] = useState(null); // { kind: 'success'|'error'|'info', title, message }
   const [formData, setFormData] = useState({
     school_id: '',
     school_name: '',
@@ -25,13 +29,63 @@ export default function SchoolManagement() {
 
   const isSuperAdmin = user?.role === 'SuperAdmin';
 
+  const showToast = (nextToast) => {
+    setToast(nextToast);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast(null), 4000);
+  };
+
+  useEffect(() => {
+    return () => window.clearTimeout(showToast._t);
+  }, []);
+
+  const fieldLabel = (key) => {
+    const labels = {
+      school_id: 'School ID',
+      school_name: 'School Name',
+      principal_name: 'Principal / School Head',
+      designation: 'Designation',
+      year_started: 'Year Established',
+      school_type: 'School Type',
+      logo_url: 'School Logo',
+    };
+    return labels[key] || key;
+  };
+
+  const getChangedFields = (before, after) => {
+    if (!before) return [];
+    const keys = [
+      'school_id',
+      'school_name',
+      'principal_name',
+      'designation',
+      'year_started',
+      'school_type',
+    ];
+    const changed = [];
+    for (const k of keys) {
+      const a = before?.[k];
+      const b = after?.[k];
+      // Normalize comparisons for numbers/strings
+      const na = a == null ? '' : String(a);
+      const nb = b == null ? '' : String(b);
+      if (na !== nb) changed.push(fieldLabel(k));
+    }
+    return changed;
+  };
+
   const loadSchools = async () => {
     setLoading(true);
     try {
-      const data = await getAllSchools({ search: searchTerm });
+      const data = await getAllSchools({ search: searchTerm, sortBy: 'school_name', order: 'ASC' });
       setSchools(data);
     } catch (err) {
       console.error('Failed to load schools:', err);
+      showToast({
+        kind: 'error',
+        title: 'Failed to load schools',
+        message: err?.friendlyMessage || err?.response?.data?.message || 'Please try again.',
+      });
     } finally {
       setLoading(false);
     }
@@ -50,21 +104,27 @@ export default function SchoolManagement() {
       setFormData({
         school_id: school.school_id,
         school_name: school.school_name,
+        logo_url: school.logo_url || null,
         principal_name: school.principal_name,
         designation: school.designation,
         year_started: school.year_started.toString(),
         school_type: school.school_type || 'Public'
       });
+      setLogoFile(null);
+      setLogoPreview(school.logo_url || null);
     } else {
       setEditingSchool(null);
       setFormData({
         school_id: '',
         school_name: '',
+        logo_url: null,
         principal_name: '',
         designation: '',
         year_started: new Date().getFullYear().toString(),
         school_type: 'Public'
       });
+      setLogoFile(null);
+      setLogoPreview(null);
     }
     setShowModal(true);
   };
@@ -72,20 +132,98 @@ export default function SchoolManagement() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingSchool(null);
+    setLogoFile(null);
+    setLogoPreview(null);
+  };
+
+  const sanitizeSchoolId = (value) => String(value || '').replace(/\D/g, '').slice(0, 6);
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file (JPG, PNG, etc.).');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Logo file must be 8MB or smaller.');
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const cleanedId = sanitizeSchoolId(formData.school_id);
+      if (cleanedId.length !== 6) {
+        alert('School ID must be exactly 6 digits.');
+        return;
+      }
+      const payload = { ...formData, school_id: cleanedId };
       if (editingSchool) {
-        await updateSchool(editingSchool.id, formData);
+        await updateSchool(editingSchool.id, payload);
+        if (logoFile) {
+          try {
+            await uploadSchoolLogo(editingSchool.id, logoFile);
+            showToast({
+              kind: 'success',
+              title: 'Logo uploaded',
+              message: 'School logo was uploaded successfully.',
+            });
+          } catch (uploadErr) {
+            showToast({
+              kind: 'error',
+              title: 'Logo upload failed',
+              message:
+                uploadErr?.response?.data?.message ||
+                uploadErr?.friendlyMessage ||
+                'Could not upload school logo. Please try again.',
+            });
+          }
+        }
+        const changed = getChangedFields(editingSchool, payload);
+        showToast({
+          kind: 'success',
+          title: 'School updated',
+          message: changed.length > 0
+            ? `Updated: ${changed.join(', ')}`
+            : 'No changes detected, but the record was saved.',
+        });
       } else {
-        await createSchool(formData);
+        const created = await createSchool(payload);
+        const newId = created?.id;
+        if (logoFile && newId) {
+          try {
+            await uploadSchoolLogo(newId, logoFile);
+            showToast({
+              kind: 'success',
+              title: 'Logo uploaded',
+              message: 'School logo was uploaded successfully.',
+            });
+          } catch (uploadErr) {
+            showToast({
+              kind: 'error',
+              title: 'Logo upload failed',
+              message:
+                uploadErr?.response?.data?.message ||
+                uploadErr?.friendlyMessage ||
+                'Could not upload school logo. Please try again.',
+            });
+          }
+        }
+        showToast({
+          kind: 'success',
+          title: 'School created',
+          message: `Saved "${payload.school_name}" (${payload.school_type}).`,
+        });
       }
       handleCloseModal();
       loadSchools();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save school record');
+      const msg = err?.response?.data?.message || err?.friendlyMessage || 'Failed to save school record';
+      showToast({ kind: 'error', title: 'Save failed', message: msg });
     }
   };
 
@@ -93,9 +231,14 @@ export default function SchoolManagement() {
     if (!window.confirm('Are you sure you want to delete this school record?')) return;
     try {
       await deleteSchool(id);
+      showToast({ kind: 'success', title: 'School deleted', message: 'The school record was removed.' });
       loadSchools();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete school record');
+      showToast({
+        kind: 'error',
+        title: 'Delete failed',
+        message: err?.response?.data?.message || err?.friendlyMessage || 'Failed to delete school record',
+      });
     }
   };
 
@@ -107,7 +250,7 @@ export default function SchoolManagement() {
       'School Name': s.school_name,
       'Principal Name': s.principal_name,
       'Designation': s.designation,
-      'Year Started': s.year_started
+      'Year Established': s.year_started
     }));
 
     const fileName = `SHS_Schools_${new Date().toISOString().split('T')[0]}`;
@@ -126,7 +269,7 @@ export default function SchoolManagement() {
       const doc = new jsPDF();
       doc.text('SHS School Records', 14, 15);
       
-      const tableColumn = ['School ID', 'School Name', 'Principal Name', 'Designation', 'Year Started'];
+      const tableColumn = ['School ID', 'School Name', 'Principal Name', 'Designation', 'Year Established'];
       const tableRows = schools.map(s => [
         s.school_id,
         s.school_name,
@@ -147,7 +290,21 @@ export default function SchoolManagement() {
 
   return (
     <div className="admin-console school-mgmt-container">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      {toast && (
+        <div className={`school-toast school-toast--${toast.kind || 'info'}`} role="status" aria-live="polite">
+          <div className="school-toast__title">{toast.title}</div>
+          <div className="school-toast__message">{toast.message}</div>
+          <button
+            type="button"
+            className="school-toast__close"
+            aria-label="Dismiss"
+            onClick={() => setToast(null)}
+          >
+            <FaTimes />
+          </button>
+        </div>
+      )}
+      <div className="school-mgmt-header d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-dark mb-1">School Management</h2>
           <p className="text-muted small mb-0">Manage and monitor SHS school records and administrators.</p>
@@ -174,7 +331,7 @@ export default function SchoolManagement() {
                 />
               </div>
             </div>
-            <div className="col-md-6 d-flex justify-content-md-end gap-2">
+            <div className="col-md-6 d-flex justify-content-md-end gap-2 school-mgmt-export-actions">
               <button className="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" onClick={() => exportData('pdf')}>
                 <FaFilePdf /> PDF
               </button>
@@ -191,22 +348,23 @@ export default function SchoolManagement() {
 
       <div className="school-mgmt-table-card">
         <div className="table-responsive">
-          <table className="table align-middle mb-0 school-table">
+          <table className="table align-middle mb-0 school-table school-table--fixed">
             <thead>
               <tr>
+                <th className="ps-4">Logo</th>
                 <th className="ps-4">School ID</th>
                 <th>School Name</th>
                 <th>Type</th>
                 <th>Principal Name</th>
                 <th>Designation</th>
-                <th>Year Started</th>
+                <th>Year Established</th>
                 <th className="text-end pe-4">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-5">
+                  <td colSpan="8" className="text-center py-5">
                     <div className="spinner-border text-primary" role="status">
                       <span className="visually-hidden">Loading...</span>
                     </div>
@@ -215,14 +373,23 @@ export default function SchoolManagement() {
               ) : schools.length > 0 ? (
                 schools.map((school) => (
                   <tr key={school.id}>
+                    <td className="ps-4">
+                      <div className="school-logo">
+                        {school.logo_url ? (
+                          <img src={resolveFileUrl(school.logo_url)} alt="" />
+                        ) : (
+                          <span aria-hidden="true">🏫</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="ps-4 school-id-badge">{school.school_id}</td>
-                    <td className="fw-semibold">{school.school_name}</td>
+                    <td className="fw-semibold school-name-cell" title={school.school_name}>{school.school_name}</td>
                     <td>
                       <span className={`school-type-badge ${school.school_type.toLowerCase()}`}>
                         {school.school_type}
                       </span>
                     </td>
-                    <td>{school.principal_name}</td>
+                    <td className="school-principal-cell" title={school.principal_name}>{school.principal_name}</td>
                     <td><span className="designation-pill">{school.designation}</span></td>
                     <td>{school.year_started}</td>
                     <td className="pe-4">
@@ -250,7 +417,7 @@ export default function SchoolManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center py-5 text-muted">
+                  <td colSpan="8" className="text-center py-5 text-muted">
                     <div className="opacity-25 mb-2"><FaSchool size={48} /></div>
                     No school records found.
                   </td>
@@ -274,6 +441,20 @@ export default function SchoolManagement() {
           
           <div className="side-sheet-body">
             <form id="schoolForm" onSubmit={handleSubmit} className="school-form-grid">
+              <div className="form-group-custom">
+                <label>School Logo (optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="form-control-custom"
+                  onChange={handleLogoChange}
+                />
+                {logoPreview && (
+                  <div className="school-logo-preview">
+                    <img src={logoPreview} alt="" />
+                  </div>
+                )}
+              </div>
               <div className="form-group-custom">
                 <label>School Name</label>
                 <div className="input-group">
@@ -299,9 +480,12 @@ export default function SchoolManagement() {
                     className="form-control-custom"
                     placeholder="e.g. 301234"
                     value={formData.school_id}
-                    onChange={(e) => setFormData({ ...formData, school_id: e.target.value })}
+                    inputMode="numeric"
+                    maxLength={6}
+                    onChange={(e) => setFormData({ ...formData, school_id: sanitizeSchoolId(e.target.value) })}
                     required
                   />
+                  <small className="text-muted">6 digits only</small>
                 </div>
                 <div className="form-group-custom">
                   <label>School Type</label>
@@ -347,7 +531,7 @@ export default function SchoolManagement() {
                   />
                 </div>
                 <div className="form-group-custom">
-                  <label>Year Started</label>
+                  <label>Year Established</label>
                   <div className="input-group">
                     <span className="input-group-text bg-light border-end-0">
                       <FaCalendarAlt className="text-muted" />

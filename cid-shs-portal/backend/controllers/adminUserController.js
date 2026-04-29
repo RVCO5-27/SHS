@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { validatePasswordStrength } = require('../utils/passwordPolicy');
+const { logCreate, logUpdate, logDelete, logRoleChange, logAccountStatusChange, calculateDiff, getClientIp, getUserAgent } = require('../services/auditService');
 
 /**
  * List all users.
@@ -41,8 +42,24 @@ const createUser = async (req, res, next) => {
         'INSERT INTO admins (username, email, password, role) VALUES (?, ?, ?, ?)',
         [username.trim(), email.trim().toLowerCase(), hash, role]
       );
+      
+      const userId = result.insertId;
+      const newUserData = { username, email, role };
+      
+      // Log user creation
+      await logCreate(
+        req.user.id,
+        'users',
+        newUserData,
+        userId,
+        'admin',
+        `Created admin user: ${username}`,
+        getClientIp(req),
+        getUserAgent(req)
+      );
+      
       res.status(201).json({
-        id: result.insertId,
+        id: userId,
         username,
         email,
         role,
@@ -72,6 +89,12 @@ const updateUser = async (req, res, next) => {
       return res.status(400).json({ message: 'Username, email, and role are required' });
     }
 
+    // Get old user data for audit log
+    const [[oldUser]] = await db.execute(
+      'SELECT id, username, email, role FROM admins WHERE id = ?',
+      [id]
+    );
+
     let sql = 'UPDATE admins SET username = ?, email = ?, role = ?';
     const params = [username.trim(), email.trim().toLowerCase(), role];
 
@@ -93,6 +116,36 @@ const updateUser = async (req, res, next) => {
       if (result.affectedRows === 0) {
         return res.status(404).json({ message: 'User not found' });
       }
+      
+      // Log user update
+      const updatedData = { username, email, role };
+      const diff = calculateDiff(oldUser, updatedData);
+      await logUpdate(
+        req.user.id,
+        'users',
+        oldUser,
+        updatedData,
+        id,
+        'admin',
+        diff,
+        `Updated admin user: ${username}`,
+        getClientIp(req),
+        getUserAgent(req)
+      );
+      
+      // Log role change separately if role changed
+      if (oldUser.role !== role) {
+        await logRoleChange(
+          req.user.id,
+          id,
+          oldUser.role,
+          role,
+          'Role updated via admin panel',
+          getClientIp(req),
+          getUserAgent(req)
+        );
+      }
+      
       res.json({ message: 'User updated successfully' });
     } catch (dbErr) {
       if (dbErr.code === 'ER_DUP_ENTRY') {
@@ -116,10 +169,29 @@ const deleteUser = async (req, res, next) => {
       return res.status(400).json({ message: 'You cannot delete your own account' });
     }
 
+    // Get user data for audit log
+    const [[user]] = await db.execute(
+      'SELECT id, username, email, role FROM admins WHERE id = ?',
+      [id]
+    );
+
     const [result] = await db.execute('DELETE FROM admins WHERE id = ?', [id]);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
+    
+    // Log user deletion
+    await logDelete(
+      req.user.id,
+      'users',
+      user,
+      id,
+      'admin',
+      `Deleted admin user: ${user?.username}`,
+      getClientIp(req),
+      getUserAgent(req)
+    );
+    
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     next(err);

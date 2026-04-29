@@ -1,8 +1,10 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import Header from '../Header/Header.jsx';
+import Header from '../Header.jsx';
+import AdminHeader from '../AdminHeader.jsx';
 import Sidebar from '../Sidebar.jsx';
 import Footer from '../Footer/Footer.jsx';
+import { useAuth } from '../../context/AuthContext';
 import './Layout.css';
 
 /**
@@ -12,6 +14,7 @@ import './Layout.css';
 const Layout = ({ children, variant = 'public' }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const layoutRef = useRef(null);
+  const { user } = useAuth();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -49,8 +52,12 @@ const Layout = ({ children, variant = 'public' }) => {
   return (
     <div className={`layout ${variant === 'admin' ? 'layout--admin' : ''}`} ref={layoutRef}>
       {/* Header - Scrolls with content */}
-<header className="layout__header" role="banner" id="Header">
-        <Header adminArea={variant === 'admin'} />
+      <header className="layout__header" role="banner" id="Header">
+        {variant === 'admin' ? (
+          <AdminHeader user={user} onMenuToggle={toggleSidebar} />
+        ) : (
+          <Header onMenuToggle={toggleSidebar} />
+        )}
       </header>
 
       {/* Main Container */}

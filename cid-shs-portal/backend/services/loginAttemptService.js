@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const db = require('../config/db');
 const { sendRecoveryEmail } = require('./recoveryMail');
 const { logAuthEvent } = require('./authAudit');
+const { logAuditEvent, getClientIp } = require('./auditService');
 
 const RECOVERY_TTL_MIN = 15;
 
@@ -41,7 +42,7 @@ async function resetAttempts(adminId) {
 }
 
 /**
- * @returns {Promise<{ blocked: boolean, lockUntil: Date|null, attemptCount: number, recoverySent?: boolean }>}
+ * @returns {Promise<{ blocked: boolean, lockUntil: Date|null, attemptCount: number, recoverySent?: boolean, recoveryReason?: string|null }>}
  */
 async function recordFailedAttempt(adminId, email, username, reqIp = null) {
   const row = await getOrCreateAttempts(adminId, email || null);
@@ -63,6 +64,7 @@ async function recordFailedAttempt(adminId, email, username, reqIp = null) {
   );
 
   let recoverySent = false;
+  let recoveryReason = null;
   if (count >= 5 && em && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
     try {
       const token = crypto.randomBytes(32).toString('hex');
@@ -72,9 +74,15 @@ async function recordFailedAttempt(adminId, email, username, reqIp = null) {
       );
       const result = await sendRecoveryEmail({ to: em, token, username });
       recoverySent = result.sent === true;
+      recoveryReason = result.reason || null;
     } catch (err) {
       console.error('Recovery token/email failed (ensure login_recovery table exists):', err.message);
+      recoveryReason = 'MAIL_FLOW_ERROR';
     }
+  } else if (count >= 5 && !em) {
+    recoveryReason = 'NO_EMAIL_ON_FILE';
+  } else if (count >= 5) {
+    recoveryReason = 'INVALID_EMAIL_ON_FILE';
   }
 
   const ctx = { adminId, ip: reqIp || null };
@@ -86,6 +94,27 @@ async function recordFailedAttempt(adminId, email, username, reqIp = null) {
       `ACCOUNT_BLOCKED recovery_email=${recoverySent ? 'sent' : 'skipped_or_failed'}`,
       ctx
     );
+    // Log account lockout to Phase 1 audit system
+    try {
+      await logAuditEvent({
+        userId: null,
+        action: 'ACCOUNT_LOCKOUT',
+        status: 'FAILED',
+        module: 'auth',
+        description: `Account locked after 5 failed login attempts. Recovery email ${recoverySent ? 'sent' : 'not sent'}`,
+        resourceType: 'user_account',
+        resourceId: adminId,
+        newValue: {
+          locked: true,
+          reason: 'excessive_failed_attempts',
+          recovery_sent: recoverySent,
+          recovery_reason: recoveryReason || null
+        },
+        ipAddress: reqIp || null
+      });
+    } catch (auditErr) {
+      console.error('[loginAttemptService] Failed to log account lockout:', auditErr.message);
+    }
   }
 
   return {
@@ -93,6 +122,7 @@ async function recordFailedAttempt(adminId, email, username, reqIp = null) {
     lockUntil: count >= 5 ? null : count === 3 || count === 4 ? 'db' : null,
     attemptCount: count,
     recoverySent,
+    recoveryReason,
   };
 }
 

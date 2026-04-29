@@ -7,3 +7,4 @@ router.get('/', organizationalChartController.getOrganizationalChart);
 router.put('/', authMiddleware, requireAdminRole, organizationalChartController.updateOrganizationalChart);
 
 module.exports = router;
+

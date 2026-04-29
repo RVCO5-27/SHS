@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { passwordChecks, strengthLevel } from '../utils/passwordStrength';
 import { parseJwtPayload } from '../utils/jwtPayload';
 import './AdminLogin.css';
@@ -15,6 +16,7 @@ function CheckRow({ ok, label }) {
 }
 
 export default function AdminChangePassword() {
+  const { fetchProfile } = useAuth();
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const payload = useMemo(() => parseJwtPayload(token), [token]);
@@ -60,6 +62,7 @@ export default function AdminChangePassword() {
       const res = await api.post('/auth/change-password', body);
       if (res.data?.token) {
         localStorage.setItem('token', res.data.token);
+        await fetchProfile();
         navigate('/admin/dashboard', { replace: true });
       }
     } catch (err) {

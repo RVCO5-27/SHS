@@ -5,21 +5,43 @@ import api from './api';
  * Now connected to the real backend API.
  */
 
+function mapIssuanceItem(item) {
+  return {
+    id: item.id,
+    name: item.title,
+    doc_number: item.doc_number,
+    category: item.category_name,
+    category_prefix: item.category_prefix,
+    date: item.date_issued || item.created_at,
+    file_path: item.file_path || '',
+    tags: item.tags,
+    size: item.file_size ? `${(item.file_size / 1024 / 1024).toFixed(2)} MB` : 'PDF',
+    type: 'pdf',
+  };
+}
+
+function dedupeById(items = []) {
+  const seen = new Set();
+  const unique = [];
+  for (const item of items) {
+    const key = item?.id ?? `${item?.doc_number || ''}-${item?.title || ''}-${item?.created_at || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
 export async function fetchFolders() {
   // Returns both unique series years and custom folders for browsing
   try {
+    console.log('[issuancesDocumentService] Fetching folders...');
     const [{ data: years }, { data: folders }] = await Promise.all([
       api.get('/issuances/years'),
       api.get('/issuances/folders')
     ]);
-    
-    const yearFolders = (years || []).map(year => ({ 
-      id: `year-${year}`, 
-      label: year.toString(), 
-      type: 'year',
-      value: year,
-      level: 0
-    }));
+    console.log('[issuancesDocumentService] Years:', years);
+    console.log('[issuancesDocumentService] Folders:', folders);
     
     // Build tree then flatten for simple list display with indentation
     const buildTree = (list, parentId = null, level = 0) => {
@@ -30,7 +52,8 @@ export async function fetchFolders() {
           label: f.name,
           type: 'folder',
           value: f.id,
-          level: level
+          level: level,
+          parent_id: f.parent_id
         });
         tree = [...tree, ...buildTree(list, f.id, level + 1)];
       });
@@ -39,7 +62,19 @@ export async function fetchFolders() {
 
     const customFolders = buildTree(folders || []);
 
-    return [...customFolders, ...yearFolders];
+    const yearFolders = (years || []).map(year => ({ 
+      id: `year-${year}`, 
+      label: year.toString(), 
+      type: 'year',
+      value: year,
+      level: 0,
+      hasChildren: customFolders.some(f => f.level === 1) // Check if any level-1 folders exist
+    }));
+
+    console.log('[issuancesDocumentService] Year folders:', yearFolders);
+    console.log('[issuancesDocumentService] Custom folders:', customFolders);
+
+    return [...yearFolders, ...customFolders];
   } catch (err) {
     console.error('Error fetching folders:', err);
     throw err;
@@ -49,35 +84,32 @@ export async function fetchFolders() {
 export async function fetchFilesForFolder(folderObj) {
   // folderObj can be a string (id) or the folder object from fetchFolders
   try {
+    console.log('[fetchFilesForFolder] Called with:', folderObj);
     let url = '/issuances';
     if (typeof folderObj === 'string') {
       if (folderObj.startsWith('year-')) {
-        url += `?series_year=${folderObj.replace('year-', '')}`;
+        const year = folderObj.replace('year-', '');
+        url += `?series_year=${year}`;
+        console.log('[fetchFilesForFolder] Year folder - using series_year:', year);
       } else if (folderObj.startsWith('folder-')) {
-        url += `?folder_id=${folderObj.replace('folder-', '')}`;
+        const folderId = folderObj.replace('folder-', '');
+        url += `?folder_id=${folderId}`;
+        console.log('[fetchFilesForFolder] Custom folder - using folder_id:', folderId);
       } else {
         // Fallback for old calls
         url += `?series_year=${folderObj}`;
+        console.log('[fetchFilesForFolder] Fallback - using series_year:', folderObj);
       }
     } else if (folderObj?.type === 'year') {
       url += `?series_year=${folderObj.value}`;
+      console.log('[fetchFilesForFolder] Year object - using series_year:', folderObj.value);
     } else if (folderObj?.type === 'folder') {
       url += `?folder_id=${folderObj.value}`;
+      console.log('[fetchFilesForFolder] Folder object - using folder_id:', folderObj.value);
     }
 
     const { data } = await api.get(url);
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.title,
-      doc_number: item.doc_number,
-      category: item.category_name,
-      category_prefix: item.category_prefix,
-      date: item.date_issued || item.created_at,
-      file_path: item.file_path ? item.file_path.replace(/^\/uploads\//, '') : '',
-      tags: item.tags,
-      size: 'PDF',
-      type: 'pdf'
-    }));
+    return dedupeById(data || []).map(mapIssuanceItem);
   } catch (err) {
     console.error('Error fetching files for folder:', err);
     throw err;
@@ -86,31 +118,20 @@ export async function fetchFilesForFolder(folderObj) {
 
 export async function searchDocuments(params = {}) {
   try {
-    const { q, schoolYear, category_id } = params;
+    const { q, schoolYear, category_id, dateStart, dateEnd } = params;
     let url = `/issuances?q=${q || ''}`;
     if (schoolYear) url += `&series_year=${schoolYear}`;
     if (category_id) url += `&category_id=${category_id}`;
+    if (dateStart) url += `&start_date=${dateStart}`;
+    if (dateEnd) url += `&end_date=${dateEnd}`;
 
     const { data } = await api.get(url);
-    return (data || []).map(item => ({
-      id: item.id,
-      name: item.title,
-      doc_number: item.doc_number,
-      category: item.category_name,
-      category_prefix: item.category_prefix,
-      date: item.date_issued || item.created_at,
-      // Strip /uploads/ prefix if it exists for compatibility with old UI manual prepending
-      file_path: item.file_path ? item.file_path.replace(/^\/uploads\//, '') : '',
-      tags: item.tags,
-      size: 'PDF', // placeholder since DB doesn't track size
-      type: 'pdf'
-    }));
+    return dedupeById(data || []).map(mapIssuanceItem);
   } catch (err) {
     console.error('Error searching documents:', err);
     throw err;
   }
 }
-
 export async function fetchCategories() {
   try {
     const { data } = await api.get('/issuances/categories');
@@ -143,9 +164,7 @@ export async function fetchAdminIssuances(params = {}) {
 
 export async function createDocument(formData) {
   try {
-    const { data } = await api.post('/admin/issuances-mgmt/issuances', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const { data } = await api.post('/admin/issuances-mgmt/issuances', formData);
     return data;
   } catch (err) {
     console.error('Error creating document:', err);
@@ -195,9 +214,7 @@ export async function deleteFolder(id) {
 
 export async function updateDocument(id, formData) {
   try {
-    const { data } = await api.put(`/admin/issuances-mgmt/issuances/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const { data } = await api.put(`/admin/issuances-mgmt/issuances/${id}`, formData);
     return data;
   } catch (err) {
     console.error('Error updating document:', err);

@@ -227,17 +227,24 @@ CREATE TABLE `saved_searches` (
 CREATE TABLE `audit_logs` (
   `id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT NULL,
-  `action_type` enum('CREATE','UPDATE','DELETE','LOGIN','LOGOUT','UPLOAD') NOT NULL,
-  `module` varchar(100) NOT NULL DEFAULT '',
+  `action_type` enum('CREATE','UPDATE','DELETE','LOGIN','LOGOUT','UPLOAD','DOWNLOAD','VIEW','PASSWORD_RESET','ACCOUNT_LOCKOUT','SESSION_TIMEOUT','AUTHENTICATION_BYPASS_ATTEMPT','ROLE_CHANGE','ACCOUNT_STATUS_CHANGE','ADMIN_PASSWORD_RESET','BULK_USER_IMPORT','PUBLICATION_STATUS_CHANGE','FILE_ATTACHMENT','VISIBILITY_CHANGE','CAROUSEL_OPERATION','ORGCHART_CHANGE','EMAIL_VERIFICATION','API_KEY_GENERATED','API_KEY_REVOKED','RATE_LIMIT_CHANGE','SECURITY_SETTING_CHANGE','BACKUP_CREATED','BACKUP_RESTORED','SCHEMA_MIGRATION','MAINTENANCE_TASK','CRITICAL_ERROR','PERMISSION_DENIED','DATA_VALIDATION_FAILED','MALWARE_SCAN_ALERT') NOT NULL,
+  `status` enum('SUCCESS','FAILED') DEFAULT 'SUCCESS',
+  `module` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
   `record_id` varchar(50) DEFAULT NULL,
-  `old_value` longtext DEFAULT NULL,
-  `new_value` longtext DEFAULT NULL,
   `resource_type` varchar(50) DEFAULT NULL,
   `resource_id` int(11) DEFAULT NULL,
+  `old_value` longtext DEFAULT NULL,
+  `new_value` longtext DEFAULT NULL,
   `diff_snapshot` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`diff_snapshot`)),
   `ip_address` varchar(45) DEFAULT NULL,
   `user_agent` text DEFAULT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT current_timestamp()
+  `timestamp` timestamp NOT NULL DEFAULT current_timestamp(),
+  KEY `idx_timestamp` (`timestamp`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_action_type` (`action_type`),
+  KEY `idx_status` (`status`),
+  KEY `idx_module` (`module`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -283,6 +290,8 @@ CREATE TABLE `schools` (
   `id` int(11) NOT NULL,
   `school_id` varchar(50) NOT NULL,
   `school_name` varchar(255) NOT NULL,
+  `display_order` int(11) DEFAULT NULL,
+  `logo_url` varchar(255) DEFAULT NULL,
   `principal_name` varchar(255) NOT NULL,
   `designation` varchar(100) NOT NULL,
   `year_started` int(11) NOT NULL,

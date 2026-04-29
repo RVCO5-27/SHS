@@ -137,11 +137,7 @@ export async function uploadDocument(file, metadata = {}) {
   if (metadata.subject) formData.append('subject', metadata.subject);
   
   try {
-    const response = await api.post('/documents/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
+    const response = await api.post('/documents/upload', formData);
     return response.data;
   } catch (error) {
     console.error('Error uploading document:', error);

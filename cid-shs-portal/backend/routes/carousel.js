@@ -9,3 +9,4 @@ router.put('/:id', authMiddleware, requireAdminRole, carouselController.updateCa
 router.delete('/:id', authMiddleware, requireAdminRole, carouselController.deleteCarouselSlide);
 
 module.exports = router;
+

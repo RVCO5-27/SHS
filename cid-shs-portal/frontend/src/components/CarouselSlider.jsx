@@ -78,7 +78,22 @@ export function CarouselSlider() {
         onMouseLeave={() => setIsPaused(false)}
       >
         {/* Carousel Indicators */}
-        <div className="carousel-indicators">
+        <div
+          className="carousel-indicators"
+          style={{
+            position: 'absolute',
+            margin: 0,
+            bottom: '0.7rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            justifyContent: 'center',
+            width: 'fit-content',
+            padding: '0.28rem 0.5rem',
+            borderRadius: '999px',
+            background: 'rgba(15, 23, 42, 0.72)',
+            zIndex: 5,
+          }}
+        >
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -90,10 +105,13 @@ export function CarouselSlider() {
               aria-label={`Slide ${idx + 1}`}
               onClick={() => goToSlide(idx)}
               style={{ 
-                width: '10px', 
-                height: '10px', 
+                width: '8px', 
+                height: '8px', 
                 borderRadius: '50%', 
-                margin: '0 4px'
+                margin: '0 4px',
+                border: '1px solid rgba(255,255,255,0.85)',
+                backgroundColor: idx === currentIndex ? '#ffffff' : 'rgba(255,255,255,0.45)',
+                opacity: 1,
               }}
             />
           ))}
@@ -107,59 +125,143 @@ export function CarouselSlider() {
               key={slide.id || idx}
               data-bs-interval="5000"
             >
+              {(() => {
+                const category = String(slide.category || '').trim();
+                const title = String(slide.title || '').trim();
+                const description = String(slide.description || '').trim();
+                const ctaText = String(slide.cta_text || '').trim();
+                const hasDetails = Boolean(category || title || description || ctaText);
+                const imageAlt = title || 'Carousel slide';
+                return (
               <a
                 href={slide.cta_link || '#'}
                 target="_blank"
                 rel="noreferrer"
                 className="carousel-slide-link"
-                aria-label={`Open: ${slide.title}`}
+                aria-label={`Open: ${imageAlt}`}
                 onClick={(e) => !slide.cta_link && e.preventDefault()}
+                style={{ display: 'block', textDecoration: 'none' }}
               >
-                <img 
-                  src={resolveFileUrl(slide.image_path)} 
-                  className="d-block w-100" 
-                  alt={slide.title}
-                  style={{ 
-                    height: 'clamp(280px, 52vw, 460px)', 
-                    objectFit: 'cover'
+                <div
+                  style={{
+                    position: 'relative',
+                    height: 'clamp(280px, 52vw, 460px)',
+                    background: '#0f172a',
+                    overflow: 'hidden',
                   }}
-                />
-                {/* Overlay Caption */}
-                <div className="carousel-caption d-none d-md-block">
-                  <div className="container">
-                    <div className="row justify-content-center">
-                      <div className="col-lg-8">
-                        <span 
-                          className="badge mb-2" 
-                          style={{ 
-                            backgroundColor: 'var(--sdo-accent)',
-                            fontSize: '0.75rem',
-                            textTransform: 'uppercase',
-                            letterSpacing: '1px'
-                          }}
-                        >
-                          {slide.category || 'Official Issuance'}
-                        </span>
-                        <h2 className="display-6 fw-bold mb-2">{slide.title}</h2>
-                        <p className="lead mb-3" style={{ fontSize: '1rem', opacity: 0.9 }}>
-                          {slide.description}
-                        </p>
-                        {slide.cta_text && (
-                          <div className="btn btn-primary btn-sm px-4 py-2">
-                            {slide.cta_text}
-                          </div>
-                        )}
+                >
+                  <img
+                    src={resolveFileUrl(slide.image_path)}
+                    aria-hidden="true"
+                    alt=""
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                      filter: 'blur(14px) brightness(0.72)',
+                      transform: 'scale(1.08)',
+                      opacity: 0.75,
+                    }}
+                  />
+                  <img
+                    src={resolveFileUrl(slide.image_path)}
+                    className="d-block w-100"
+                    alt={imageAlt}
+                    style={{
+                      position: 'relative',
+                      zIndex: 1,
+                      height: '100%',
+                      objectFit: 'contain',
+                      objectPosition: 'center',
+                    }}
+                  />
+                </div>
+
+                {hasDetails && (
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderTop: 'none',
+                      padding: '0.75rem 1rem',
+                      color: '#0f172a',
+                    }}
+                  >
+                    {category && (
+                      <span
+                        className="badge mb-2"
+                        style={{
+                          backgroundColor: '#e2e8f0',
+                          color: '#0f172a',
+                          fontSize: '0.68rem',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.6px',
+                        }}
+                      >
+                        {category}
+                      </span>
+                    )}
+                    {title && (
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: 'clamp(1rem, 2vw, 1.35rem)',
+                          lineHeight: 1.2,
+                          fontWeight: 700,
+                          color: '#0f172a',
+                        }}
+                      >
+                        {title}
+                      </h3>
+                    )}
+                    {description && (
+                      <p
+                        style={{
+                          margin: '0.35rem 0 0',
+                          fontSize: '0.93rem',
+                          color: '#334155',
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {description}
+                      </p>
+                    )}
+                    {ctaText && (
+                      <div style={{ marginTop: '0.55rem' }}>
+                        <span className="btn btn-primary btn-sm px-3 py-1">{ctaText}</span>
                       </div>
-                    </div>
+                    )}
                   </div>
-                </div>
-                
-                {/* Mobile Caption */}
-                <div className="carousel-caption d-md-none" style={{ padding: '0.85rem', bottom: '2.15rem' }}>
-                  <h6 className="mb-1">{slide.title}</h6>
-                  <p className="carousel-click-indicator mb-0">Click to view official document</p>
-                </div>
+                )}
+                {!hasDetails && (
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderTop: 'none',
+                      padding: '0.35rem',
+                    }}
+                  />
+                )}
+                {slide.cta_link && (
+                  <p
+                    className="mb-0"
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#64748b',
+                      padding: '0.35rem 0.95rem 0.2rem',
+                      background: '#ffffff',
+                    }}
+                  >
+                    Tap/click image to open link
+                  </p>
+                )}
               </a>
+                );
+              })()}
             </div>
           ))}
         </div>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { friendlyHttpMessage } from '../utils/httpMessages';
 
 let baseURL = import.meta.env.VITE_API_URL;
 if (baseURL) {
@@ -15,12 +16,18 @@ if (baseURL) {
 const api = axios.create({
   baseURL,
   // Removed default Content-Type to let Axios handle FormData correctly
+  withCredentials: true, // Send cookies with requests (primary session)
 });
 
-// Attach JWT automatically when present
+// Fallback: Bearer from localStorage (same key as AdminLogin / change-password flows).
+// HttpOnly cookies cannot be read here; header duplicates cookie when both exist — backend prefers cookie first.
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
   return config;
 });
 
@@ -32,6 +39,7 @@ api.interceptors.response.use(
     if (code === 'MUST_CHANGE_PASSWORD' && path && !path.includes('/admin/change-password')) {
       window.location.assign(`${window.location.origin}/admin/change-password`);
     }
+    err.friendlyMessage = friendlyHttpMessage(err);
     return Promise.reject(err);
   }
 );
@@ -65,5 +73,3 @@ export const resolveFileUrl = (path) => {
   return `${origin}${normalizedPath}`;
 };
 
-// Export helper to set token programmatically (useful for tests)
-export const setToken = (t) => { if (t) localStorage.setItem('token', t); else localStorage.removeItem('token'); };

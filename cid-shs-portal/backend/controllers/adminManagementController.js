@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { validatePasswordStrength } = require('../utils/passwordPolicy');
+const { logRoleChange, logAccountStatusChange, getClientIp, getUserAgent } = require('../services/auditService');
 
 /**
  * List all users.
@@ -120,20 +121,31 @@ const updateUser = async (req, res, next) => {
     try {
       const [result] = await db.execute(sql, params);
       
-      // Audit log
-      try {
-        await db.execute(
-          'INSERT INTO audit_logs (user_id, action_type, module, record_id, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?)',
-          [
-            req.user.id, 
-            'UPDATE', 
-            'User Management', 
-            id, 
-            JSON.stringify(targetUser), 
-            JSON.stringify({ username, email, role: finalRole, status })
-          ]
+      // Log role change separately if role changed
+      if (targetUser.role !== finalRole) {
+        await logRoleChange(
+          req.user.id,
+          id,
+          targetUser.role,
+          finalRole,
+          'Role updated via admin panel',
+          getClientIp(req),
+          getUserAgent(req)
         );
-      } catch (logErr) { console.error('Audit log failed:', logErr); }
+      }
+      
+      // Log status change separately if status changed
+      if (targetUser.status !== status) {
+        await logAccountStatusChange(
+          req.user.id,
+          id,
+          targetUser.status,
+          status,
+          'Status updated via admin panel',
+          getClientIp(req),
+          getUserAgent(req)
+        );
+      }
 
       res.json({ message: 'User updated successfully' });
     } catch (dbErr) {
@@ -173,13 +185,16 @@ const deleteUser = async (req, res, next) => {
     const newStatus = targetUser.status === 'active' ? 'inactive' : 'active';
     await db.execute('UPDATE admins SET status = ? WHERE id = ?', [newStatus, id]);
 
-    // Audit log
-    try {
-      await db.execute(
-        'INSERT INTO audit_logs (user_id, action_type, module, record_id, old_value, new_value) VALUES (?, ?, ?, ?, ?, ?)',
-        [req.user.id, 'UPDATE', 'User Management', id, JSON.stringify({ status: targetUser.status }), JSON.stringify({ status: newStatus })]
-      );
-    } catch (logErr) { console.error('Audit log failed:', logErr); }
+    // Log account status change
+    await logAccountStatusChange(
+      req.user.id,
+      id,
+      targetUser.status,
+      newStatus,
+      `Account ${newStatus === 'active' ? 'reactivated' : 'deactivated'} via admin panel`,
+      getClientIp(req),
+      getUserAgent(req)
+    );
 
     res.json({ message: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully` });
   } catch (err) {

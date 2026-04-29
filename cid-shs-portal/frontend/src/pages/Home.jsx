@@ -6,30 +6,21 @@ import { getStatsSummary } from '../services/stats';
 import './Home.css';
 
 export default function Home() {
-  const [files, setFiles] = useState([]);
   const [stats, setStats] = useState([
-    { value: '...', label: 'SHS Schools' },
-    { value: '...', label: 'Issuances' },
-    { value: '10K+', label: 'Students' },
-    { value: '500+', label: 'Teachers' },
+    { value: '...', label: 'Private Schools', icon: '🏫' },
+    { value: '...', label: 'Public Schools', icon: '🏛️' },
+    { value: '...', label: 'Issuances', icon: '📄' },
   ]);
 
   useEffect(() => {
-    // Fetch file list
-    fetch('/api/uploads')
-      .then((res) => res.json())
-      .then(setFiles)
-      .catch(() => setFiles([]));
-
     // Fetch real-time stats from database
     const loadStats = async () => {
       try {
         const data = await getStatsSummary();
         setStats([
-          { value: `${data.schools}+`, label: 'SHS Schools' },
-          { value: `${data.issuances}+`, label: 'Issuances' },
-          { value: data.students || '10K+', label: 'Students' },
-          { value: data.teachers || '500+', label: 'Teachers' },
+          { value: `${data.privateSchools}+`, label: 'Private Schools', icon: '🏫' },
+          { value: `${data.publicSchools}+`, label: 'Public Schools', icon: '🏛️' },
+          { value: `${data.issuances}+`, label: 'Issuances', icon: '📄' },
         ]);
       } catch (err) {
         console.error('Failed to load real-time stats:', err);
@@ -58,7 +49,8 @@ export default function Home() {
       title: 'SHS Program',
       description: 'Learn about the Strengthened SHS 2026-2027 program',
       icon: '📖',
-      to: '/shs-program',
+      href: 'https://www.deped.gov.ph/strengthened-shs-program/',
+      external: true,
     },
   ];
 
@@ -78,12 +70,15 @@ export default function Home() {
           <h2 id="welcome-title" className="visually-hidden">
             At a glance
           </h2>
-          {stats.map((stat, index) => (
-            <div key={index} className="welcome-card">
-              <span className="welcome-card__value">{stat.value}</span>
-              <span className="welcome-card__label">{stat.label}</span>
-            </div>
-          ))}
+          <div className="welcome-grid">
+            {stats.map((stat, index) => (
+              <div key={index} className="welcome-card">
+                <div className="welcome-card__icon">{stat.icon}</div>
+                <span className="welcome-card__value">{stat.value}</span>
+                <span className="welcome-card__label">{stat.label}</span>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Announcements */}
@@ -95,16 +90,23 @@ export default function Home() {
             <p className="section-header__subtitle">Latest news and updates from the portal</p>
           </header>
           <div className="announcement-grid">
-            {announcements.map((link) => (
-              <Link key={link.id} to={link.to} className="announcement-card">
-                <div className="announcement-card__icon">{link.icon}</div>
-                <h3 className="announcement-card__title">{link.title}</h3>
-                <p className="announcement-card__description">{link.description}</p>
-                <span className="announcement-card__link">
-                  Explore <span aria-hidden="true">→</span>
-                </span>
-              </Link>
-            ))}
+            {announcements.map((link) => {
+              const Component = link.external ? 'a' : Link;
+              const props = link.external 
+                ? { href: link.href, target: '_blank', rel: 'noopener noreferrer', className: 'announcement-card' }
+                : { to: link.to, className: 'announcement-card' };
+              
+              return (
+                <Component key={link.id} {...props}>
+                  <div className="announcement-card__icon">{link.icon}</div>
+                  <h3 className="announcement-card__title">{link.title}</h3>
+                  <p className="announcement-card__description">{link.description}</p>
+                  <span className="announcement-card__link">
+                    Explore <span aria-hidden="true">→</span>
+                  </span>
+                </Component>
+              );
+            })}
           </div>
         </section>
 
@@ -119,7 +121,7 @@ export default function Home() {
               Issuances page.
             </p>
           </header>
-          <HomeIssuancesTeaser uploadFiles={files} />
+          <HomeIssuancesTeaser />
         </section>
 
         {/* CTA */}

@@ -50,7 +50,7 @@ export default function Header({ adminArea = false }) {
   const unreadCount = mockNotifications.filter(n => n.unread).length;
 
   return (
-    <header className="header" role="banner">
+    <header className={`header ${adminArea ? 'admin-header' : ''}`} role="banner">
       <div className="header-left">
         <h1 className="header-title">
           Building Futures: Strengthened SHS Implementation Dashboard
